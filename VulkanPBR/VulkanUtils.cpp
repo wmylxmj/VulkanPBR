@@ -107,6 +107,24 @@ static bool InitDebugReportCallback() {
 	return true;
 }
 
+static bool InitSurface() {
+	VkWin32SurfaceCreateInfoKHR createSurfaceInfo;
+	createSurfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	createSurfaceInfo.hwnd = (HWND)s_globalConfig.hWnd;
+	createSurfaceInfo.hinstance = GetModuleHandle(nullptr);
+	createSurfaceInfo.pNext = nullptr;
+	createSurfaceInfo.flags = 0;
+	if (__vkCreateWin32SurfaceKHR(
+		s_globalConfig.vulkanInstance,
+		&createSurfaceInfo,
+		nullptr,
+		&s_globalConfig.vulkanSurface
+	) != VK_SUCCESS) {
+		return false;
+	}
+	return true;
+}
+
 bool InitVulkan(void* param, int width, int height)
 {
 	s_globalConfig.hWnd = param;
@@ -119,6 +137,9 @@ bool InitVulkan(void* param, int width, int height)
 	__vkDestroyDebugReportCallback = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(s_globalConfig.vulkanInstance, "vkDestroyDebugReportCallbackEXT");
 	__vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(s_globalConfig.vulkanInstance, "vkCreateWin32SurfaceKHR");
 	if (!InitDebugReportCallback()) {
+		return false;
+	}
+	if (!InitSurface()) {
 		return false;
 	}
 

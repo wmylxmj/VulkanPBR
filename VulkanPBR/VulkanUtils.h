@@ -8,6 +8,7 @@ struct GlobalConfig {
 	uint32_t viewportWidth;
 	uint32_t viewportHeight;
 	VkInstance vulkanInstance;
+	VkSurfaceKHR vulkanSurface;
 
 	char** enabledLayers;
 	int enabledLayerCount;

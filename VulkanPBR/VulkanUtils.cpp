@@ -10,6 +10,12 @@ static const char* s_enabledExtensions[] = {
 	VK_EXT_DEBUG_REPORT_EXTENSION_NAME
 }; // For vulkan instance
 
+static PFN_vkCreateDebugReportCallbackEXT __vkCreateDebugReportCallback = nullptr;
+static PFN_vkDestroyDebugReportCallbackEXT __vkDestroyDebugReportCallback = nullptr;
+static PFN_vkCreateWin32SurfaceKHR __vkCreateWin32SurfaceKHR = nullptr;
+
+static VkDebugReportCallbackEXT s_vulkanDebugReportCallback = nullptr;
+
 static void InitvalidationLayers() {
 	uint32_t layerCount;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -71,12 +77,48 @@ static bool InitVulkanInstance() {
 	return true;
 }
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+	VkDebugReportFlagsEXT flags,
+	VkDebugReportObjectTypeEXT objectType,
+	uint64_t object,
+	size_t location,
+	int32_t messageCode,
+	const char* pLayerPrefix,
+	const char* pMessage,
+	void* pUserData
+) {
+	OutputDebugStringA(pMessage);
+	return VK_FALSE;
+}
+
+static bool InitDebugReportCallback() {
+	VkDebugReportCallbackCreateInfoEXT createDebugInfo = {};
+	createDebugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+	createDebugInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+	createDebugInfo.pfnCallback = DebugCallback;
+	if (__vkCreateDebugReportCallback(
+		s_globalConfig.vulkanInstance,
+		&createDebugInfo,
+		nullptr,
+		&s_vulkanDebugReportCallback
+	) != VK_SUCCESS) {
+		return false;
+	}
+	return true;
+}
+
 bool InitVulkan(void* param, int width, int height)
 {
 	s_globalConfig.hWnd = param;
 	s_globalConfig.viewportWidth = width;
 	s_globalConfig.viewportHeight = height;
 	if (!InitVulkanInstance()) {
+		return false;
+	}
+	__vkCreateDebugReportCallback = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(s_globalConfig.vulkanInstance, "vkCreateDebugReportCallbackEXT");
+	__vkDestroyDebugReportCallback = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(s_globalConfig.vulkanInstance, "vkDestroyDebugReportCallbackEXT");
+	__vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(s_globalConfig.vulkanInstance, "vkCreateWin32SurfaceKHR");
+	if (!InitDebugReportCallback()) {
 		return false;
 	}
 

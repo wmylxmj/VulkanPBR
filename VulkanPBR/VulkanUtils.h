@@ -21,4 +21,5 @@ struct GlobalConfig {
 	int enabledLayerCount;
 };
 
+GlobalConfig& GetGlobalConfig();
 bool InitVulkan(void* param, int width, int height);

@@ -1,6 +1,8 @@
 #include "VulkanUtils.h"
 
 #include <string>
+#include <vector>
+#include <set>
 
 static GlobalConfig s_globalConfig = {};
 
@@ -9,6 +11,10 @@ static const char* s_enabledExtensions[] = {
 	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 	VK_EXT_DEBUG_REPORT_EXTENSION_NAME
 }; // For vulkan instance
+static const char* s_enabledLogicDeviceExtensions[] = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME
+};
 
 static PFN_vkCreateDebugReportCallbackEXT __vkCreateDebugReportCallback = nullptr;
 static PFN_vkDestroyDebugReportCallbackEXT __vkDestroyDebugReportCallback = nullptr;
@@ -16,7 +22,12 @@ static PFN_vkCreateWin32SurfaceKHR __vkCreateWin32SurfaceKHR = nullptr;
 
 static VkDebugReportCallbackEXT s_vulkanDebugReportCallback = nullptr;
 
-static void InitvalidationLayers() {
+GlobalConfig& GetGlobalConfig()
+{
+	return s_globalConfig;
+}
+
+static void InitValidationLayers() {
 	uint32_t layerCount;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 	if (layerCount == 0) {
@@ -67,7 +78,7 @@ static bool InitVulkanInstance() {
 	createInfo.pApplicationInfo = &appInfo;
 	createInfo.enabledExtensionCount = sizeof(s_enabledExtensions) / sizeof(s_enabledExtensions[0]);
 	createInfo.ppEnabledExtensionNames = s_enabledExtensions;
-	InitvalidationLayers();
+	InitValidationLayers();
 	createInfo.enabledLayerCount = s_globalConfig.enabledLayerCount;
 	createInfo.ppEnabledLayerNames = s_globalConfig.enabledLayers;
 	if (vkCreateInstance(&createInfo, nullptr, &s_globalConfig.vulkanInstance) != VK_SUCCESS) {
@@ -183,6 +194,56 @@ static bool InitPhysicalDevice() {
 	return false;
 }
 
+static void InitVulkanLogicDevice() {
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<int> uniqueQueueFamilies = {
+		s_globalConfig.graphicsQueueFamilyIndex,
+		s_globalConfig.presentQueueFamilyIndex
+	};
+	float queuePriority = 1.0f;
+	for (int queueFamily : uniqueQueueFamilies) {
+		VkDeviceQueueCreateInfo queueCreateInfo = {};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamily;
+		queueCreateInfo.queueCount = 1;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
+
+	VkPhysicalDeviceFeatures deviceFeatures = {};
+	deviceFeatures.fillModeNonSolid = VK_TRUE;
+
+	VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT nonSeamlessCubeMapFeatures = {};
+	nonSeamlessCubeMapFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT;
+	nonSeamlessCubeMapFeatures.nonSeamlessCubeMap = VK_TRUE;
+
+	VkDeviceCreateInfo createDeviceInfo = {};
+	createDeviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createDeviceInfo.pQueueCreateInfos = queueCreateInfos.data();
+	createDeviceInfo.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
+
+	createDeviceInfo.pEnabledFeatures = &deviceFeatures;
+	createDeviceInfo.enabledExtensionCount = 0;
+
+	createDeviceInfo.enabledLayerCount = s_globalConfig.enabledLayerCount;
+	createDeviceInfo.ppEnabledLayerNames = s_globalConfig.enabledLayers;
+
+	createDeviceInfo.enabledExtensionCount = sizeof(s_enabledLogicDeviceExtensions) / sizeof(s_enabledLogicDeviceExtensions[0]);;
+	createDeviceInfo.ppEnabledExtensionNames = s_enabledLogicDeviceExtensions;
+	createDeviceInfo.pNext = &nonSeamlessCubeMapFeatures;
+
+	if (vkCreateDevice(
+		s_globalConfig.physicalDevice,
+		&createDeviceInfo,
+		nullptr,
+		&s_globalConfig.logicalDevice
+	) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create vulkan logic device\n");
+	}
+	vkGetDeviceQueue(s_globalConfig.logicalDevice, s_globalConfig.graphicsQueueFamilyIndex, 0, &s_globalConfig.graphicsQueue);
+	vkGetDeviceQueue(s_globalConfig.logicalDevice, s_globalConfig.presentQueueFamilyIndex, 0, &s_globalConfig.presentQueue);
+}
+
 bool InitVulkan(void* param, int width, int height)
 {
 	s_globalConfig.hWnd = param;
@@ -203,6 +264,7 @@ bool InitVulkan(void* param, int width, int height)
 	if (!InitPhysicalDevice()) {
 		return false;
 	}
+	InitVulkanLogicDevice();
 
 	return true;
 }

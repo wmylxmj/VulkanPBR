@@ -44,6 +44,7 @@ int WINAPI WinMain(
 		NULL, L"VulkanWindow", L"Vulkan Render Window", WS_OVERLAPPEDWINDOW,
 		200, 200, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, hInstance, NULL
 	);
+	GetGlobalConfig().preferredSampleCount = VK_SAMPLE_COUNT_1_BIT;
 	InitVulkan(hwnd, 1280, 720);
 	ShowWindow(hwnd, SW_SHOW);
 	UpdateWindow(hwnd);

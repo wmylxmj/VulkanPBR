@@ -9,7 +9,14 @@ struct GlobalConfig {
 	uint32_t viewportHeight;
 	VkInstance vulkanInstance;
 	VkSurfaceKHR vulkanSurface;
-
+	VkPhysicalDevice physicalDevice;
+	VkDevice logicalDevice;
+	VkQueue graphicsQueue;
+	VkQueue presentQueue;
+	int graphicsQueueFamilyIndex;
+	int presentQueueFamilyIndex;
+	VkSampleCountFlagBits physicalDeviceMaxSampleCount;
+	VkSampleCountFlagBits preferredSampleCount;
 	char** enabledLayers;
 	int enabledLayerCount;
 };

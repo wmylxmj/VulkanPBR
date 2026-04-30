@@ -125,6 +125,64 @@ static bool InitSurface() {
 	return true;
 }
 
+static VkSampleCountFlagBits GetPhysicalDeviceMaxSampleCount(VkPhysicalDevice physicalDevice) {
+	VkPhysicalDeviceProperties physicalDeviceProperties;
+	vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+	VkSampleCountFlags sampleCountFlags = physicalDeviceProperties.limits.framebufferColorSampleCounts > physicalDeviceProperties.limits.framebufferDepthSampleCounts ?
+		physicalDeviceProperties.limits.framebufferDepthSampleCounts : physicalDeviceProperties.limits.framebufferColorSampleCounts;
+	if (sampleCountFlags & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+	if (sampleCountFlags & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+	if (sampleCountFlags & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+	if (sampleCountFlags & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+	if (sampleCountFlags & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+	if (sampleCountFlags & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+	return VK_SAMPLE_COUNT_1_BIT;
+}
+
+static bool InitPhysicalDevice() {
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(s_globalConfig.vulkanInstance, &deviceCount, nullptr);
+	if (deviceCount == 0) {
+		OutputDebugStringA("Cannot find any gpu on this computer!\n");
+		return false;
+	}
+	VkPhysicalDevice* devices = new VkPhysicalDevice[deviceCount];
+	vkEnumeratePhysicalDevices(s_globalConfig.vulkanInstance, &deviceCount, devices);
+
+	for (uint32_t i = 0; i < deviceCount; ++i) {
+		VkPhysicalDeviceProperties deviceProperties;
+		VkPhysicalDeviceFeatures deviceFeatures;
+		vkGetPhysicalDeviceProperties(devices[i], &deviceProperties);
+		vkGetPhysicalDeviceFeatures(devices[i], &deviceFeatures);
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamilyCount, nullptr);
+		VkQueueFamilyProperties* queueFamilies = (VkQueueFamilyProperties*)alloca(queueFamilyCount * sizeof(VkQueueFamilyProperties));
+		vkGetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamilyCount, queueFamilies);
+		s_globalConfig.graphicsQueueFamilyIndex = -1;
+		s_globalConfig.presentQueueFamilyIndex = -1;
+		for (uint32_t j = 0; j < queueFamilyCount; ++j) {
+			if (queueFamilies[j].queueCount > 0 && queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+				s_globalConfig.graphicsQueueFamilyIndex = j;
+			}
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], j, s_globalConfig.vulkanSurface, &presentSupport);
+			if (queueFamilies[j].queueCount > 0 && presentSupport) {
+				s_globalConfig.presentQueueFamilyIndex = j;
+			}
+			if (s_globalConfig.graphicsQueueFamilyIndex != -1 && s_globalConfig.presentQueueFamilyIndex != -1) {
+				s_globalConfig.physicalDevice = devices[i];
+				s_globalConfig.physicalDeviceMaxSampleCount = GetPhysicalDeviceMaxSampleCount(devices[i]);
+				if (s_globalConfig.preferredSampleCount > s_globalConfig.physicalDeviceMaxSampleCount) {
+					s_globalConfig.preferredSampleCount = s_globalConfig.physicalDeviceMaxSampleCount;
+				}
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool InitVulkan(void* param, int width, int height)
 {
 	s_globalConfig.hWnd = param;
@@ -140,6 +198,9 @@ bool InitVulkan(void* param, int width, int height)
 		return false;
 	}
 	if (!InitSurface()) {
+		return false;
+	}
+	if (!InitPhysicalDevice()) {
 		return false;
 	}
 

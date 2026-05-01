@@ -22,6 +22,67 @@ static PFN_vkCreateWin32SurfaceKHR __vkCreateWin32SurfaceKHR = nullptr;
 
 static VkDebugReportCallbackEXT s_vulkanDebugReportCallback = nullptr;
 
+Texture::Texture(VkFormat inFormat, VkImageAspectFlags inImageAspectFlag)
+{
+	image = nullptr;
+	memory = nullptr;
+	imageView = nullptr;
+	format = inFormat;
+	imageAspectFlag = inImageAspectFlag;
+}
+
+Texture::~Texture()
+{
+	if (memory != nullptr) {
+		vkFreeMemory(s_globalConfig.logicalDevice, memory, nullptr);
+	}
+	if (imageView != nullptr) {
+		vkDestroyImageView(s_globalConfig.logicalDevice, imageView, nullptr);
+	}
+	if (image != nullptr) {
+		vkDestroyImage(s_globalConfig.logicalDevice, image, nullptr);
+	}
+}
+
+FrameBuffer::FrameBuffer()
+{
+	frameBuffer = nullptr;
+	depthAttachment = nullptr;
+	resolveBuffer = nullptr;
+	sampleCount = VK_SAMPLE_COUNT_1_BIT;
+}
+
+FrameBuffer::~FrameBuffer()
+{
+	if (depthAttachment != nullptr) {
+		delete depthAttachment;
+		depthAttachment = nullptr;
+	}
+	for (Texture* colorAttachment : colorAttachments) {
+		delete colorAttachment;
+	}
+	colorAttachments.clear();
+}
+
+VkImageView GenImageView2D(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int inMipmapLevelCount) {
+	VkImageView imageView;
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = inImage;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = inFormat;
+	viewInfo.subresourceRange.aspectMask = inImageAspectFlags;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = inMipmapLevelCount;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+	if (vkCreateImageView(s_globalConfig.logicalDevice, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+		printf("failed to create texture image view!");
+		return nullptr;
+	}
+	return imageView;
+}
+
 GlobalConfig& GetGlobalConfig()
 {
 	return s_globalConfig;
@@ -228,7 +289,7 @@ static void InitVulkanLogicDevice() {
 	createDeviceInfo.enabledLayerCount = s_globalConfig.enabledLayerCount;
 	createDeviceInfo.ppEnabledLayerNames = s_globalConfig.enabledLayers;
 
-	createDeviceInfo.enabledExtensionCount = sizeof(s_enabledLogicDeviceExtensions) / sizeof(s_enabledLogicDeviceExtensions[0]);;
+	createDeviceInfo.enabledExtensionCount = sizeof(s_enabledLogicDeviceExtensions) / sizeof(s_enabledLogicDeviceExtensions[0]);
 	createDeviceInfo.ppEnabledExtensionNames = s_enabledLogicDeviceExtensions;
 	createDeviceInfo.pNext = &nonSeamlessCubeMapFeatures;
 
@@ -242,6 +303,91 @@ static void InitVulkanLogicDevice() {
 	}
 	vkGetDeviceQueue(s_globalConfig.logicalDevice, s_globalConfig.graphicsQueueFamilyIndex, 0, &s_globalConfig.graphicsQueue);
 	vkGetDeviceQueue(s_globalConfig.logicalDevice, s_globalConfig.presentQueueFamilyIndex, 0, &s_globalConfig.presentQueue);
+}
+
+static void InitSwapchainDetailedInfo() {
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s_globalConfig.physicalDevice, s_globalConfig.vulkanSurface, &s_globalConfig.surfaceCapabilities);
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(s_globalConfig.physicalDevice, s_globalConfig.vulkanSurface, &formatCount, nullptr);
+
+	if (formatCount != 0) {
+		s_globalConfig.surfaceFormats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(s_globalConfig.physicalDevice, s_globalConfig.vulkanSurface, &formatCount, s_globalConfig.surfaceFormats.data());
+	}
+
+	uint32_t presentModeCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(s_globalConfig.physicalDevice, s_globalConfig.vulkanSurface, &presentModeCount, nullptr);
+
+	if (presentModeCount != 0) {
+		s_globalConfig.presentModes.resize(presentModeCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(s_globalConfig.physicalDevice, s_globalConfig.vulkanSurface, &presentModeCount, s_globalConfig.presentModes.data());
+	}
+}
+
+void InitSwapchain() {
+	InitSwapchainDetailedInfo();
+	VkSurfaceFormatKHR surfaceFormat;
+	for (const auto& availableFormat : s_globalConfig.surfaceFormats) {
+		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+			surfaceFormat.colorSpace = availableFormat.colorSpace;
+			surfaceFormat.format = availableFormat.format;
+			break;
+		}
+	}
+	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+	for (const auto& availablePresentMode : s_globalConfig.presentModes) {
+		if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR) {
+			presentMode = availablePresentMode;
+			break;
+		}
+	}
+	VkExtent2D extent = { uint32_t(s_globalConfig.viewportWidth), uint32_t(s_globalConfig.viewportHeight) };
+
+	uint32_t imageCount = s_globalConfig.surfaceCapabilities.minImageCount;
+
+	VkSwapchainCreateInfoKHR createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	createInfo.surface = s_globalConfig.vulkanSurface;
+	createInfo.minImageCount = imageCount;
+	createInfo.imageFormat = surfaceFormat.format;
+	createInfo.imageColorSpace = surfaceFormat.colorSpace;
+	createInfo.imageExtent = extent;
+	createInfo.imageArrayLayers = 1;
+	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	OutputDebugStringA((std::string("Swapchain image count: ") + std::to_string(imageCount) + "\n").c_str());
+	uint32_t queueFamilyIndices[] = { (uint32_t)s_globalConfig.graphicsQueueFamilyIndex, (uint32_t)s_globalConfig.presentQueueFamilyIndex };
+
+	if (s_globalConfig.graphicsQueueFamilyIndex != s_globalConfig.presentQueueFamilyIndex) {
+		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		createInfo.queueFamilyIndexCount = 2;
+		createInfo.pQueueFamilyIndices = queueFamilyIndices;
+	}
+	else {
+		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	createInfo.preTransform = s_globalConfig.surfaceCapabilities.currentTransform;
+	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	createInfo.presentMode = presentMode;
+	createInfo.clipped = VK_TRUE;
+
+	createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+	if (vkCreateSwapchainKHR(s_globalConfig.logicalDevice, &createInfo, nullptr, &s_globalConfig.swapchain) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create swap chain!\n");
+	}
+
+	vkGetSwapchainImagesKHR(s_globalConfig.logicalDevice, s_globalConfig.swapchain, &imageCount, nullptr);
+	s_globalConfig.swapchainImages.resize(imageCount);
+	vkGetSwapchainImagesKHR(s_globalConfig.logicalDevice, s_globalConfig.swapchain, &imageCount, s_globalConfig.swapchainImages.data());
+
+	s_globalConfig.swapchainImageFormat = surfaceFormat.format;
+	s_globalConfig.swapchainExtent = extent;
+	s_globalConfig.swapchainImageViews.resize(imageCount);
+	s_globalConfig.swapchainFrameBufferCount = imageCount;
+	for (uint32_t i = 0; i < imageCount; i++) {
+		s_globalConfig.swapchainImageViews[i] = GenImageView2D(s_globalConfig.swapchainImages[i], s_globalConfig.swapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+	}
 }
 
 bool InitVulkan(void* param, int width, int height)
@@ -265,6 +411,7 @@ bool InitVulkan(void* param, int width, int height)
 		return false;
 	}
 	InitVulkanLogicDevice();
+	InitSwapchain();
 
 	return true;
 }

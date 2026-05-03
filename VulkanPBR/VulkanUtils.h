@@ -53,6 +53,8 @@ struct GlobalConfig {
 	FrameBuffer* systemFrameBuffers;
 	uint32_t systemFrameBufferCount;
 	VkCommandPool commandPool;
+	VkSemaphore readyToRenderSemaphore;
+	VkSemaphore readyToPresentSemaphore;
 };
 
 void GenImage(Texture* texture, uint32_t width, uint32_t height, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount, int mipmaplevel = 1);

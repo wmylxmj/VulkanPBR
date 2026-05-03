@@ -537,7 +537,7 @@ static void SystemFrameBufferFinish(int inIndex, FrameBuffer& framebuffer) {
 	}
 }
 
-void InitSystemFrameBuffer() {
+static void InitSystemFrameBuffer() {
 	if (s_globalConfig.systemRenderPass != nullptr) {
 		vkDestroyRenderPass(s_globalConfig.logicalDevice, s_globalConfig.systemRenderPass, nullptr);
 		s_globalConfig.systemRenderPass = nullptr;
@@ -563,13 +563,22 @@ void InitSystemFrameBuffer() {
 	}
 }
 
-void InitCommandPool() {
+static void InitCommandPool() {
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = s_globalConfig.graphicsQueueFamilyIndex;
 	poolInfo.flags = 0;
 	if (vkCreateCommandPool(s_globalConfig.logicalDevice, &poolInfo, nullptr, &s_globalConfig.commandPool) != VK_SUCCESS) {
 		OutputDebugStringA("Failed to create command pool\n");
+	}
+}
+
+void InitSemaphores() {
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	if (vkCreateSemaphore(s_globalConfig.logicalDevice, &semaphoreInfo, nullptr, &s_globalConfig.readyToRenderSemaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(s_globalConfig.logicalDevice, &semaphoreInfo, nullptr, &s_globalConfig.readyToPresentSemaphore) != VK_SUCCESS) {
+		printf("Failed to create semaphore\n");
 	}
 }
 
@@ -597,6 +606,7 @@ bool InitVulkan(void* param, int width, int height)
 	InitSwapchain();
 	InitSystemFrameBuffer();
 	InitCommandPool();
+	InitSemaphores();
 
 	return true;
 }

@@ -49,11 +49,12 @@ struct GlobalConfig {
 	VkExtent2D swapchainExtent;
 	std::vector<VkImage> swapchainImages;
 	std::vector<VkImageView> swapchainImageViews;
-	VkRenderPass swapchainRenderPass;
-	FrameBuffer* swapchainFrameBuffers;
-	uint32_t swapchainFrameBufferCount;
+	VkRenderPass systemRenderPass;
+	FrameBuffer* systemFrameBuffers;
+	uint32_t systemFrameBufferCount;
 };
 
+void GenImage(Texture* texture, uint32_t width, uint32_t height, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount, int mipmaplevel = 1);
 VkImageView GenImageView2D(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int mipmap_level = 1);
 
 GlobalConfig& GetGlobalConfig();

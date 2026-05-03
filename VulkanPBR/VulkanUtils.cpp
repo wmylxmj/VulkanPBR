@@ -64,6 +64,47 @@ FrameBuffer::~FrameBuffer()
 	colorAttachments.clear();
 }
 
+uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(s_globalConfig.physicalDevice, &memProperties);
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+	return 0;
+}
+
+void GenImage(Texture* texture, uint32_t width, uint32_t height, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount, int mipmaplevel)
+{
+	VkImageCreateInfo imageInfo = {};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent = { width, height, 1 };
+	imageInfo.mipLevels = mipmaplevel;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = texture->format;
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.usage = usage;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples = sampleCount;
+	if (vkCreateImage(s_globalConfig.logicalDevice, &imageInfo, nullptr, &texture->image) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create image!\n");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(s_globalConfig.logicalDevice, texture->image, &memRequirements);
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	if (vkAllocateMemory(s_globalConfig.logicalDevice, &allocInfo, nullptr, &texture->memory) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to allocate image memory!\n");
+	}
+	vkBindImageMemory(s_globalConfig.logicalDevice, texture->image, texture->memory, 0);
+}
+
 VkImageView GenImageView2D(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int inMipmapLevelCount) {
 	VkImageView imageView;
 	VkImageViewCreateInfo viewInfo = {};
@@ -299,7 +340,7 @@ static void InitVulkanLogicDevice() {
 		nullptr,
 		&s_globalConfig.logicalDevice
 	) != VK_SUCCESS) {
-		OutputDebugStringA("Failed to create vulkan logic device\n");
+		OutputDebugStringA("Failed to create vulkan logical device\n");
 	}
 	vkGetDeviceQueue(s_globalConfig.logicalDevice, s_globalConfig.graphicsQueueFamilyIndex, 0, &s_globalConfig.graphicsQueue);
 	vkGetDeviceQueue(s_globalConfig.logicalDevice, s_globalConfig.presentQueueFamilyIndex, 0, &s_globalConfig.presentQueue);
@@ -384,9 +425,141 @@ void InitSwapchain() {
 	s_globalConfig.swapchainImageFormat = surfaceFormat.format;
 	s_globalConfig.swapchainExtent = extent;
 	s_globalConfig.swapchainImageViews.resize(imageCount);
-	s_globalConfig.swapchainFrameBufferCount = imageCount;
+	s_globalConfig.systemFrameBufferCount = imageCount;
 	for (uint32_t i = 0; i < imageCount; i++) {
 		s_globalConfig.swapchainImageViews[i] = GenImageView2D(s_globalConfig.swapchainImages[i], s_globalConfig.swapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+	}
+}
+
+static void InitSystemRenderPass() {
+	VkSampleCountFlagBits sampleCount = s_globalConfig.preferredSampleCount;
+	VkAttachmentDescription colorAttachment = {};
+	colorAttachment.format = s_globalConfig.swapchainImageFormat;
+	colorAttachment.samples = sampleCount;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	if (sampleCount & VK_SAMPLE_COUNT_1_BIT) {
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	}
+	else {
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
+
+	VkAttachmentDescription depthAttachment = {};
+	depthAttachment.format = VK_FORMAT_D24_UNORM_S8_UINT;
+	depthAttachment.samples = sampleCount;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef = {};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentDescription attachments[3];
+	int attachment_count = 2;
+
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;
+	if (sampleCount & VK_SAMPLE_COUNT_1_BIT) {
+		memcpy(&attachments[0], &colorAttachment, sizeof(VkAttachmentDescription));
+		memcpy(&attachments[1], &depthAttachment, sizeof(VkAttachmentDescription));
+	}
+	else {
+		VkAttachmentDescription colorAttachmentResolve = {};
+		colorAttachmentResolve.format = s_globalConfig.swapchainImageFormat;
+		colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentReference colorAttachmentResolveRef = {};
+		colorAttachmentResolveRef.attachment = 2;
+		colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		subpass.pResolveAttachments = &colorAttachmentResolveRef;
+		attachment_count = 3;
+		memcpy(&attachments[0], &colorAttachment, sizeof(VkAttachmentDescription));
+		memcpy(&attachments[1], &depthAttachment, sizeof(VkAttachmentDescription));
+		memcpy(&attachments[2], &colorAttachmentResolve, sizeof(VkAttachmentDescription));
+	}
+
+	VkRenderPassCreateInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = attachment_count;
+	renderPassInfo.pAttachments = attachments;
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+
+	if (vkCreateRenderPass(s_globalConfig.logicalDevice, &renderPassInfo, nullptr, &s_globalConfig.systemRenderPass) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create global render pass\n");
+	}
+}
+
+static void SystemFrameBufferFinish(int inIndex, FrameBuffer& framebuffer) {
+	VkImageView attachments[3];
+	int attachmentCount = 2;
+	if (s_globalConfig.preferredSampleCount == VK_SAMPLE_COUNT_1_BIT) {
+		attachments[0] = s_globalConfig.swapchainImageViews[inIndex];
+		attachments[1] = framebuffer.depthAttachment->imageView;
+	}
+	else {
+		attachmentCount = 3;
+		attachments[0] = framebuffer.colorAttachments[0]->imageView;
+		attachments[1] = framebuffer.depthAttachment->imageView;
+		attachments[2] = s_globalConfig.swapchainImageViews[inIndex];
+	}
+	VkFramebufferCreateInfo framebufferInfo = {};
+	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	framebufferInfo.renderPass = s_globalConfig.systemRenderPass;
+	framebufferInfo.pAttachments = attachments;
+	framebufferInfo.attachmentCount = attachmentCount;
+	framebufferInfo.width = s_globalConfig.viewportWidth;
+	framebufferInfo.height = s_globalConfig.viewportHeight;
+	framebufferInfo.layers = 1;
+	if (vkCreateFramebuffer(s_globalConfig.logicalDevice, &framebufferInfo, nullptr, &framebuffer.frameBuffer) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create system frame buffer\n");
+	}
+}
+
+void InitSystemFrameBuffer() {
+	if (s_globalConfig.systemRenderPass != nullptr) {
+		vkDestroyRenderPass(s_globalConfig.logicalDevice, s_globalConfig.systemRenderPass, nullptr);
+		s_globalConfig.systemRenderPass = nullptr;
+	}
+	InitSystemRenderPass();
+	if (s_globalConfig.systemFrameBuffers != nullptr) {
+		delete[] s_globalConfig.systemFrameBuffers;
+	}
+	s_globalConfig.systemFrameBuffers = new FrameBuffer[s_globalConfig.systemFrameBufferCount];
+
+	for (int i = 0; i < s_globalConfig.systemFrameBufferCount; i++) {
+		Texture* colorBuffer = new Texture(s_globalConfig.swapchainImageFormat);
+		GenImage(colorBuffer, s_globalConfig.viewportWidth, s_globalConfig.viewportHeight, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, s_globalConfig.preferredSampleCount);
+		colorBuffer->imageView = GenImageView2D(colorBuffer->image, colorBuffer->format, colorBuffer->imageAspectFlag);
+		s_globalConfig.systemFrameBuffers[i].colorAttachments.push_back(colorBuffer);
+
+		Texture* depthBuffer = new Texture(VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_ASPECT_DEPTH_BIT);
+		GenImage(depthBuffer, s_globalConfig.viewportWidth, s_globalConfig.viewportHeight, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, s_globalConfig.preferredSampleCount);
+		depthBuffer->imageView = GenImageView2D(depthBuffer->image, depthBuffer->format, depthBuffer->imageAspectFlag);
+		s_globalConfig.systemFrameBuffers[i].depthAttachment = depthBuffer;
+
+		SystemFrameBufferFinish(i, s_globalConfig.systemFrameBuffers[i]);
 	}
 }
 
@@ -412,6 +585,7 @@ bool InitVulkan(void* param, int width, int height)
 	}
 	InitVulkanLogicDevice();
 	InitSwapchain();
+	InitSystemFrameBuffer();
 
 	return true;
 }

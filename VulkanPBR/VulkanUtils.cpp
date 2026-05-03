@@ -296,7 +296,7 @@ static bool InitPhysicalDevice() {
 	return false;
 }
 
-static void InitVulkanLogicDevice() {
+static void InitVulkanLogicalDevice() {
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<int> uniqueQueueFamilies = {
 		s_globalConfig.graphicsQueueFamilyIndex,
@@ -563,6 +563,16 @@ void InitSystemFrameBuffer() {
 	}
 }
 
+void InitCommandPool() {
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = s_globalConfig.graphicsQueueFamilyIndex;
+	poolInfo.flags = 0;
+	if (vkCreateCommandPool(s_globalConfig.logicalDevice, &poolInfo, nullptr, &s_globalConfig.commandPool) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create command pool\n");
+	}
+}
+
 bool InitVulkan(void* param, int width, int height)
 {
 	s_globalConfig.hWnd = param;
@@ -583,9 +593,10 @@ bool InitVulkan(void* param, int width, int height)
 	if (!InitPhysicalDevice()) {
 		return false;
 	}
-	InitVulkanLogicDevice();
+	InitVulkanLogicalDevice();
 	InitSwapchain();
 	InitSystemFrameBuffer();
+	InitCommandPool();
 
 	return true;
 }

@@ -857,6 +857,50 @@ void EndRendering()
 	vkEndCommandBuffer(s_globalConfig.systemRenderPassCommandBuffer);
 }
 
+static void VulkanSubmitDrawCommand(VkCommandBuffer* commandBuffer, int count) {
+	VkSemaphore waitSemaphores[] = { s_globalConfig.readyToRenderSemaphore };
+	VkSemaphore signalSemaphores[] = { s_globalConfig.readyToPresentSemaphore };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.pCommandBuffers = commandBuffer;
+	submitInfo.commandBufferCount = count;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	if (vkQueueSubmit(s_globalConfig.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		OutputDebugStringA("vkQueueSubmit failed!\n");
+	}
+}
+
+static void VulkanSwapBuffers() {
+	VkSemaphore signalSemaphores[] = { s_globalConfig.readyToPresentSemaphore };
+
+	VkPresentInfoKHR presentInfo = {};
+	uint32_t currentRenderTargetIndex = s_nextSystemFrameBufferToRender;
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pSwapchains = &s_globalConfig.swapchain;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pImageIndices = &currentRenderTargetIndex;
+
+	vkQueuePresentKHR(s_globalConfig.presentQueue, &presentInfo);
+	vkQueueWaitIdle(s_globalConfig.presentQueue);
+}
+
+void SwapBuffers()
+{
+	VulkanSubmitDrawCommand(&s_globalConfig.systemRenderPassCommandBuffer, 1);
+	VulkanSwapBuffers();
+	DeleteCommandBuffer(&s_globalConfig.systemRenderPassCommandBuffer, 1);
+	s_globalConfig.systemRenderPassCommandBuffer = nullptr;
+}
+
 VkResult BeginOneTimeCommandBuffer(VkCommandBuffer* commandBuffer)
 {
 	VkResult ret = GenCommandBuffer(commandBuffer, 1);

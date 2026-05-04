@@ -133,7 +133,7 @@ VkResult GenCommandBuffer(VkCommandBuffer* commandBuffer, int count, VkCommandBu
 void DeleteCommandBuffer(VkCommandBuffer* commandBuffer, int count);
 VkCommandBuffer BeginRendering(VkCommandBuffer inCommandBuffer);
 void EndRendering();
-
+void SwapBuffers();
 VkResult BeginOneTimeCommandBuffer(VkCommandBuffer* commandBuffer);
 void WaitForCommmandFinish(VkCommandBuffer commandBuffer);
 VkResult EndOneTimeCommandBuffer(VkCommandBuffer commandBuffer);

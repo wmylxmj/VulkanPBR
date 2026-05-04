@@ -25,6 +25,15 @@ struct FrameBuffer {
 	~FrameBuffer();
 };
 
+struct UniformInputsBindings {
+	static std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings;
+	static std::vector<VkDescriptorPoolSize> descriptorPoolSizes;
+	static VkDescriptorSetLayout descriptorSetLayout;
+	static int descriptorSetLayoutCount;
+	static void Init();
+	static void InitUniformInput(int inBindingPoint, VkShaderStageFlags inVkShaderStageFlags, VkDescriptorType inVkDescriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+};
+
 struct GlobalConfig {
 	void* hWnd;
 	uint32_t viewportWidth;

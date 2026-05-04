@@ -64,6 +64,52 @@ FrameBuffer::~FrameBuffer()
 	colorAttachments.clear();
 }
 
+std::vector<VkDescriptorSetLayoutBinding> UniformInputsBindings::descriptorSetLayoutBindings;
+std::vector<VkDescriptorPoolSize> UniformInputsBindings::descriptorPoolSizes;
+VkDescriptorSetLayout UniformInputsBindings::descriptorSetLayout;
+int UniformInputsBindings::descriptorSetLayoutCount = 1;
+
+void UniformInputsBindings::Init()
+{
+	InitUniformInput(0, VK_SHADER_STAGE_VERTEX_BIT);
+	InitUniformInput(1, VK_SHADER_STAGE_VERTEX_BIT);
+	InitUniformInput(2, VK_SHADER_STAGE_VERTEX_BIT);
+	InitUniformInput(3, VK_SHADER_STAGE_FRAGMENT_BIT);
+	InitUniformInput(4, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(5, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(6, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(7, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(8, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(9, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(10, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(11, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	InitUniformInput(12, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = static_cast<uint32_t>(descriptorSetLayoutBindings.size());
+	layoutInfo.pBindings = descriptorSetLayoutBindings.data();
+	if (vkCreateDescriptorSetLayout(s_globalConfig.logicalDevice, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create descriptor set layout!\n");
+	}
+}
+
+void UniformInputsBindings::InitUniformInput(int inBindingPoint, VkShaderStageFlags inVkShaderStageFlags, VkDescriptorType inVkDescriptorType)
+{
+	VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};
+	descriptorSetLayoutBinding.binding = inBindingPoint;
+	descriptorSetLayoutBinding.descriptorType = inVkDescriptorType;
+	descriptorSetLayoutBinding.descriptorCount = 1;
+	descriptorSetLayoutBinding.stageFlags = inVkShaderStageFlags;
+	descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+	descriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
+
+	VkDescriptorPoolSize descriptorPoolSize = {};
+	descriptorPoolSize.type = inVkDescriptorType;
+	descriptorPoolSize.descriptorCount = 1;
+	descriptorPoolSizes.push_back(descriptorPoolSize);
+}
+
 uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(s_globalConfig.physicalDevice, &memProperties);
@@ -607,6 +653,7 @@ bool InitVulkan(void* param, int width, int height)
 	InitSystemFrameBuffer();
 	InitCommandPool();
 	InitSemaphores();
+	UniformInputsBindings::Init();
 
 	return true;
 }

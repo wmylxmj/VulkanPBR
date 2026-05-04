@@ -220,6 +220,24 @@ VkImageView GenImageView2D(VkImage inImage, VkFormat inFormat, VkImageAspectFlag
 	return imageView;
 }
 
+void TransferImageLayout(
+	VkCommandBuffer inCommandBuffer, VkImage inImage, VkImageSubresourceRange inSubresourceRange,
+	VkImageLayout inOldLayout, VkAccessFlags inOldAccessFlags, VkPipelineStageFlags inSrcStageMask,
+	VkImageLayout inNewLayout, VkAccessFlags inNewAccessFlags, VkPipelineStageFlags inDstStageMask
+) {
+	VkImageMemoryBarrier barrier = {};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.oldLayout = inOldLayout;
+	barrier.srcAccessMask = inNewAccessFlags;
+	barrier.dstAccessMask = inDstStageMask;
+	barrier.newLayout = inNewLayout;
+	barrier.image = inImage;
+	barrier.subresourceRange = inSubresourceRange;
+	vkCmdPipelineBarrier(inCommandBuffer, inSrcStageMask, inDstStageMask, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+}
+
 GlobalConfig& GetGlobalConfig()
 {
 	return s_globalConfig;

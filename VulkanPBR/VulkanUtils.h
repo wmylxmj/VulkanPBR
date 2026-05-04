@@ -34,6 +34,27 @@ struct UniformInputsBindings {
 	static void InitUniformInput(int inBindingPoint, VkShaderStageFlags inVkShaderStageFlags, VkDescriptorType inVkDescriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 };
 
+struct PipelineStateObject {
+public:
+	static VkPipelineLayout pipelineLayout;
+	static void Init();
+
+	VkRenderPass renderPass;
+	VkSampleCountFlagBits sampleCount;
+	VkViewport viewport;
+	VkRect2D scissor;
+	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
+	VkPipelineColorBlendStateCreateInfo colorBlendState;
+	float depthConstantFactor;
+	float depthClamp;
+	float depthSlopeFactor;
+	VkPipeline pipeline;
+public:
+	PipelineStateObject();
+	~PipelineStateObject();
+	void CleanUp();
+};
+
 struct GlobalConfig {
 	void* hWnd;
 	uint32_t viewportWidth;

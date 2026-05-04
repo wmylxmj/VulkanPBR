@@ -110,6 +110,56 @@ void UniformInputsBindings::InitUniformInput(int inBindingPoint, VkShaderStageFl
 	descriptorPoolSizes.push_back(descriptorPoolSize);
 }
 
+VkPipelineLayout PipelineStateObject::pipelineLayout = nullptr;
+
+void PipelineStateObject::Init()
+{
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.pSetLayouts = &UniformInputsBindings::descriptorSetLayout;
+	pipelineLayoutInfo.setLayoutCount = UniformInputsBindings::descriptorSetLayoutCount;
+	if (vkCreatePipelineLayout(s_globalConfig.logicalDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create pipeline layout\n");
+	}
+}
+
+PipelineStateObject::PipelineStateObject() : pipeline(nullptr)
+{
+	viewport = {};
+	scissor = {};
+
+	colorBlendState = {};
+	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlendState.logicOpEnable = VK_FALSE;
+	colorBlendState.logicOp = VK_LOGIC_OP_COPY;
+	colorBlendState.attachmentCount = 0;
+	colorBlendState.pAttachments = nullptr;
+	colorBlendState.blendConstants[0] = 0.0f;
+	colorBlendState.blendConstants[1] = 0.0f;
+	colorBlendState.blendConstants[2] = 0.0f;
+	colorBlendState.blendConstants[3] = 0.0f;
+
+	renderPass = nullptr;
+	sampleCount = VK_SAMPLE_COUNT_1_BIT;
+
+	depthConstantFactor = 0.0f;
+	depthClamp = 0.0f;
+	depthSlopeFactor = 0.0f;
+}
+
+PipelineStateObject::~PipelineStateObject()
+{
+	CleanUp();
+}
+
+void PipelineStateObject::CleanUp()
+{
+	if (pipeline != nullptr) {
+		vkDestroyPipeline(s_globalConfig.logicalDevice, pipeline, nullptr);
+		pipeline = nullptr;
+	}
+}
+
 uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(s_globalConfig.physicalDevice, &memProperties);
@@ -654,6 +704,7 @@ bool InitVulkan(void* param, int width, int height)
 	InitCommandPool();
 	InitSemaphores();
 	UniformInputsBindings::Init();
+	PipelineStateObject::Init();
 
 	return true;
 }

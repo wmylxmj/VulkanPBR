@@ -22,6 +22,8 @@ static PFN_vkCreateWin32SurfaceKHR __vkCreateWin32SurfaceKHR = nullptr;
 
 static VkDebugReportCallbackEXT s_vulkanDebugReportCallback = nullptr;
 
+static uint32_t s_nextSystemFrameBufferToRender = -1;
+
 Texture::Texture(VkFormat inFormat, VkImageAspectFlags inImageAspectFlag)
 {
 	image = nullptr;
@@ -752,6 +754,52 @@ VkResult GenCommandBuffer(VkCommandBuffer* commandBuffer, int count, VkCommandBu
 void DeleteCommandBuffer(VkCommandBuffer* commandBuffer, int count)
 {
 	vkFreeCommandBuffers(s_globalConfig.logicalDevice, s_globalConfig.commandPool, count, commandBuffer);
+}
+
+static VkFramebuffer AquireRenderTarget() {
+	vkAcquireNextImageKHR(
+		s_globalConfig.logicalDevice,
+		s_globalConfig.swapchain,
+		UINT64_MAX,
+		s_globalConfig.readyToRenderSemaphore,
+		VK_NULL_HANDLE,
+		&s_nextSystemFrameBufferToRender
+	);
+	return s_globalConfig.systemFrameBuffers[s_nextSystemFrameBufferToRender].frameBuffer;
+}
+
+VkCommandBuffer BeginRendering(VkCommandBuffer inCommandBuffer)
+{
+	VkCommandBuffer commandbuffer;
+	if (inCommandBuffer != nullptr) {
+		commandbuffer = inCommandBuffer;
+	}
+	else {
+		BeginOneTimeCommandBuffer(&commandbuffer);
+	}
+	VkFramebuffer render_target = AquireRenderTarget();
+	VkRenderPass render_pass = s_globalConfig.systemRenderPass;
+	VkClearValue clearValues[2] = {};
+	clearValues[0].color = { 0.1f,0.4f,0.6f,1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0u };
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.framebuffer = render_target;
+	renderPassInfo.renderPass = render_pass;
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = { uint32_t(s_globalConfig.viewportWidth),uint32_t(s_globalConfig.viewportHeight) };
+	renderPassInfo.clearValueCount = 2;
+	renderPassInfo.pClearValues = clearValues;
+	vkCmdBeginRenderPass(commandbuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	s_globalConfig.systemRenderPassCommandBuffer = commandbuffer;
+	return commandbuffer;
+}
+
+void EndRendering()
+{
+	vkCmdEndRenderPass(s_globalConfig.systemRenderPassCommandBuffer);
+	vkEndCommandBuffer(s_globalConfig.systemRenderPassCommandBuffer);
 }
 
 VkResult BeginOneTimeCommandBuffer(VkCommandBuffer* commandBuffer)

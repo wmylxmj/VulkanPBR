@@ -37,6 +37,16 @@ struct BufferObject {
 	void Write(void* inData, int inDataSize = 0);
 };
 
+struct Mat4UniformBufferData {
+	int mat4Count;
+	float data[16384];
+	BufferObject* ubo;
+	bool bNeedSyncData;
+	Mat4UniformBufferData(int inMat4Count);
+	void SetMat4(int inIndex, float* inMat4);
+	void UpdateGPUData();
+};
+
 struct UniformInputsBindings {
 	static std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings;
 	static std::vector<VkDescriptorPoolSize> descriptorPoolSizes;

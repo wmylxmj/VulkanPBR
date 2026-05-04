@@ -77,6 +77,34 @@ void BufferObject::Write(void* inData, int inDataSize)
 	UnmapMemory(memory);
 }
 
+Mat4UniformBufferData::Mat4UniformBufferData(int inMat4Count)
+{
+	mat4Count = inMat4Count;
+	bNeedSyncData = true;
+	ubo = 0;
+}
+
+void Mat4UniformBufferData::SetMat4(int inIndex, float* inMat4) {
+	int offset = inIndex * 16;
+	memcpy(data + offset, inMat4, sizeof(float) * 16);
+	bNeedSyncData = true;
+}
+
+void Mat4UniformBufferData::UpdateGPUData() {
+	if (!bNeedSyncData) {
+		return;
+	}
+	if (ubo == nullptr) {
+		ubo = CreateBuffer(
+			sizeof(data),
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+		);
+	}
+	bNeedSyncData = false;
+	ubo->Write(data, sizeof(data));
+}
+
 std::vector<VkDescriptorSetLayoutBinding> UniformInputsBindings::descriptorSetLayoutBindings;
 std::vector<VkDescriptorPoolSize> UniformInputsBindings::descriptorPoolSizes;
 VkDescriptorSetLayout UniformInputsBindings::descriptorSetLayout;

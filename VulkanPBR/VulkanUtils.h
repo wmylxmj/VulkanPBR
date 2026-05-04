@@ -112,6 +112,10 @@ bool InitVulkan(void* param, int width, int height);
 VkResult GenCommandBuffer(VkCommandBuffer* commandBuffer, int count, VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 void DeleteCommandBuffer(VkCommandBuffer* commandBuffer, int count);
 
+VkResult BeginOneTimeCommandBuffer(VkCommandBuffer* commandBuffer);
+void WaitForCommmandFinish(VkCommandBuffer commandBuffer);
+VkResult EndOneTimeCommandBuffer(VkCommandBuffer commandBuffer);
+
 VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkBufferUsageFlags, VkMemoryPropertyFlags inVkMemoryPropertyFlags);
 

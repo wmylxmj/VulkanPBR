@@ -754,6 +754,47 @@ void DeleteCommandBuffer(VkCommandBuffer* commandBuffer, int count)
 	vkFreeCommandBuffers(s_globalConfig.logicalDevice, s_globalConfig.commandPool, count, commandBuffer);
 }
 
+VkResult BeginOneTimeCommandBuffer(VkCommandBuffer* commandBuffer)
+{
+	VkResult ret = GenCommandBuffer(commandBuffer, 1);
+	if (ret != VK_SUCCESS) {
+		return ret;
+	}
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	beginInfo.pNext = nullptr;
+	beginInfo.pInheritanceInfo = nullptr;
+	vkBeginCommandBuffer(*commandBuffer, &beginInfo);
+	return ret;
+}
+
+void WaitForCommmandFinish(VkCommandBuffer commandBuffer)
+{
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	VkFenceCreateInfo fenceCreateInfo{};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.flags = 0;
+	VkFence fence;
+	vkCreateFence(s_globalConfig.logicalDevice, &fenceCreateInfo, nullptr, &fence);
+	vkQueueSubmit(s_globalConfig.graphicsQueue, 1, &submitInfo, fence);
+
+	vkWaitForFences(s_globalConfig.logicalDevice, 1, &fence, VK_TRUE, 100000000000);
+	vkDestroyFence(s_globalConfig.logicalDevice, fence, nullptr);
+}
+
+VkResult EndOneTimeCommandBuffer(VkCommandBuffer commandBuffer)
+{
+	vkEndCommandBuffer(commandBuffer);
+	WaitForCommmandFinish(commandBuffer);
+	vkFreeCommandBuffers(s_globalConfig.logicalDevice, s_globalConfig.commandPool, 1, &commandBuffer);
+	return VK_SUCCESS;
+}
+
 VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
 	VkBufferCreateInfo bufferInfo = {};

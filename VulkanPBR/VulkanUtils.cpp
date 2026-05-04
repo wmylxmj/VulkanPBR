@@ -64,6 +64,17 @@ FrameBuffer::~FrameBuffer()
 	colorAttachments.clear();
 }
 
+void BufferObject::Write(void* inData, int inDataSize)
+{
+	void* data = nullptr;
+	if (inDataSize == 0) {
+		inDataSize = size;
+	}
+	MapMemory(memory, 0, inDataSize, 0, &data);
+	memcpy(data, inData, inDataSize);
+	UnmapMemory(memory);
+}
+
 std::vector<VkDescriptorSetLayoutBinding> UniformInputsBindings::descriptorSetLayoutBindings;
 std::vector<VkDescriptorPoolSize> UniformInputsBindings::descriptorPoolSizes;
 VkDescriptorSetLayout UniformInputsBindings::descriptorSetLayout;
@@ -725,4 +736,49 @@ bool InitVulkan(void* param, int width, int height)
 	PipelineStateObject::Init();
 
 	return true;
+}
+
+VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+{
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = size;
+	bufferInfo.usage = usage;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	VkResult ret = vkCreateBuffer(s_globalConfig.logicalDevice, &bufferInfo, nullptr, &buffer);
+	if (ret != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create buffer!\n");
+		return ret;
+	}
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(s_globalConfig.logicalDevice, buffer, &memRequirements);
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+	ret = vkAllocateMemory(s_globalConfig.logicalDevice, &allocInfo, nullptr, &bufferMemory);
+	if (ret != VK_SUCCESS) {
+		OutputDebugStringA("Failed to allocate buffer memory!");
+		return ret;
+	}
+	vkBindBufferMemory(s_globalConfig.logicalDevice, buffer, bufferMemory, 0);
+	return VK_SUCCESS;
+}
+
+BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkBufferUsageFlags, VkMemoryPropertyFlags inVkMemoryPropertyFlags)
+{
+	BufferObject* bufferObject = new BufferObject();
+	bufferObject->size = inVkDeviceSize;
+	GenBuffer(bufferObject->buffer, bufferObject->memory, inVkDeviceSize, inVkBufferUsageFlags, inVkMemoryPropertyFlags);
+	return bufferObject;
+}
+
+void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData)
+{
+	vkMapMemory(s_globalConfig.logicalDevice, memory, offset, size, flags, ppData);
+}
+
+void UnmapMemory(VkDeviceMemory memory)
+{
+	vkUnmapMemory(s_globalConfig.logicalDevice, memory);
 }

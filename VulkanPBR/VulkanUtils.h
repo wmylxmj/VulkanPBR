@@ -25,6 +25,18 @@ struct FrameBuffer {
 	~FrameBuffer();
 };
 
+struct BufferObject {
+	VkBuffer buffer;
+	VkDeviceMemory memory;
+	int size;
+	BufferObject() {
+		buffer = nullptr;
+		memory = nullptr;
+		size = 0;
+	}
+	void Write(void* inData, int inDataSize = 0);
+};
+
 struct UniformInputsBindings {
 	static std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings;
 	static std::vector<VkDescriptorPoolSize> descriptorPoolSizes;
@@ -93,6 +105,11 @@ VkImageView GenImageView2D(VkImage inImage, VkFormat inFormat, VkImageAspectFlag
 void TransferImageLayout(VkCommandBuffer inCommandBuffer, VkImage inImage, VkImageSubresourceRange inSubresourceRange,
 	VkImageLayout inOldLayout, VkAccessFlags inOldAccessFlags, VkPipelineStageFlags inSrcStageMask,
 	VkImageLayout inNewLayout, VkAccessFlags inNewAccessFlags, VkPipelineStageFlags inDstStageMask);
-
 GlobalConfig& GetGlobalConfig();
 bool InitVulkan(void* param, int width, int height);
+
+VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkBufferUsageFlags, VkMemoryPropertyFlags inVkMemoryPropertyFlags);
+
+void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData);
+void UnmapMemory(VkDeviceMemory memory);

@@ -105,6 +105,33 @@ void Mat4UniformBufferData::UpdateGPUData() {
 	ubo->Write(data, sizeof(data));
 }
 
+Vec4UniformBufferData::Vec4UniformBufferData(int inVec4Count) {
+	vec4Count = inVec4Count;
+	bNeedSyncData = true;
+	ubo = 0;
+}
+
+void Vec4UniformBufferData::SetVec4(int inIndex, float* inVec4) {
+	int offset = inIndex * 4;
+	memcpy(data + offset, inVec4, sizeof(float) * 4);
+	bNeedSyncData = true;
+}
+
+void Vec4UniformBufferData::UpdateGPUData() {
+	if (!bNeedSyncData) {
+		return;
+	}
+	if (ubo == nullptr) {
+		ubo = CreateBuffer(
+			sizeof(data),
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+		);
+	}
+	bNeedSyncData = false;
+	ubo->Write(data, sizeof(data));
+}
+
 std::vector<VkDescriptorSetLayoutBinding> UniformInputsBindings::descriptorSetLayoutBindings;
 std::vector<VkDescriptorPoolSize> UniformInputsBindings::descriptorPoolSizes;
 VkDescriptorSetLayout UniformInputsBindings::descriptorSetLayout;

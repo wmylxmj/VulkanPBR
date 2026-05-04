@@ -39,11 +39,21 @@ struct BufferObject {
 
 struct Mat4UniformBufferData {
 	int mat4Count;
-	float data[16384];
+	float data[16384]; // 1024 * 16
 	BufferObject* ubo;
 	bool bNeedSyncData;
 	Mat4UniformBufferData(int inMat4Count);
 	void SetMat4(int inIndex, float* inMat4);
+	void UpdateGPUData();
+};
+
+struct Vec4UniformBufferData {
+	int vec4Count;
+	float data[4096]; // 1024 * 4
+	BufferObject* ubo;
+	bool bNeedSyncData;
+	Vec4UniformBufferData(int inVec4Count);
+	void SetVec4(int inIndex, float* inVec4);
 	void UpdateGPUData();
 };
 

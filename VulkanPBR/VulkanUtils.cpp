@@ -738,6 +738,22 @@ bool InitVulkan(void* param, int width, int height)
 	return true;
 }
 
+VkResult GenCommandBuffer(VkCommandBuffer* commandBuffer, int count, VkCommandBufferLevel level)
+{
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = level;
+	allocInfo.commandPool = s_globalConfig.commandPool;
+	allocInfo.commandBufferCount = count;
+	allocInfo.pNext = nullptr;
+	return vkAllocateCommandBuffers(s_globalConfig.logicalDevice, &allocInfo, commandBuffer);
+}
+
+void DeleteCommandBuffer(VkCommandBuffer* commandBuffer, int count)
+{
+	vkFreeCommandBuffers(s_globalConfig.logicalDevice, s_globalConfig.commandPool, count, commandBuffer);
+}
+
 VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
 	VkBufferCreateInfo bufferInfo = {};

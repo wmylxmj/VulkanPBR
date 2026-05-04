@@ -97,6 +97,7 @@ struct GlobalConfig {
 	VkCommandPool commandPool;
 	VkSemaphore readyToRenderSemaphore;
 	VkSemaphore readyToPresentSemaphore;
+	VkCommandBuffer systemRenderPassCommandBuffer;
 };
 
 void GenImage(Texture* texture, uint32_t width, uint32_t height, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount, int mipmaplevel = 1);
@@ -107,6 +108,9 @@ void TransferImageLayout(VkCommandBuffer inCommandBuffer, VkImage inImage, VkIma
 	VkImageLayout inNewLayout, VkAccessFlags inNewAccessFlags, VkPipelineStageFlags inDstStageMask);
 GlobalConfig& GetGlobalConfig();
 bool InitVulkan(void* param, int width, int height);
+
+VkResult GenCommandBuffer(VkCommandBuffer* commandBuffer, int count, VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+void DeleteCommandBuffer(VkCommandBuffer* commandBuffer, int count);
 
 VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkBufferUsageFlags, VkMemoryPropertyFlags inVkMemoryPropertyFlags);

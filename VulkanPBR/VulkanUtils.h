@@ -124,6 +124,12 @@ void GenImage(Texture* texture, uint32_t width, uint32_t height, VkImageUsageFla
 VkImageView GenImageView2D(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int mipmap_level = 1);
 void SubmitImage2D(Texture* texture, int width, int height, const void* pixel);
 VkSampler GenSampler(VkFilter inMinFilter, VkFilter inMagFilter, VkSamplerAddressMode inSamplerAddressModeU, VkSamplerAddressMode inSamplerAddressModeV, VkSamplerAddressMode inSamplerAddressModeW);
+VkSampler GenCubeMapSampler(VkFilter inMinFilter = VK_FILTER_LINEAR, VkFilter inMagFilter = VK_FILTER_LINEAR,
+	VkSamplerAddressMode inSamplerAddressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+	VkSamplerAddressMode inSamplerAddressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+	VkSamplerAddressMode inSamplerAddressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+void GenImageCube(Texture* texture, uint32_t w, uint32_t h, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount, int mipmapLevel = 1);
+VkImageView GenImageViewCube(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int mipmapLevel = 1);
 
 void TransferImageLayout(VkCommandBuffer inCommandBuffer, VkImage inImage, VkImageSubresourceRange inSubresourceRange,
 	VkImageLayout inOldLayout, VkAccessFlags inOldAccessFlags, VkPipelineStageFlags inSrcStageMask,

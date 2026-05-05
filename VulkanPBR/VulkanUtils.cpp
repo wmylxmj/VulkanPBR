@@ -364,6 +364,74 @@ VkSampler GenSampler(VkFilter inMinFilter, VkFilter inMagFilter, VkSamplerAddres
 	return sampler;
 }
 
+VkSampler GenCubeMapSampler(
+	VkFilter inMinFilter, VkFilter inMagFilter,
+	VkSamplerAddressMode inSamplerAddressModeU, VkSamplerAddressMode inSamplerAddressModeV, VkSamplerAddressMode inSamplerAddressModeW
+) {
+	VkSampler sampler = nullptr;
+	VkSamplerCreateInfo samplerInfo = {};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.minFilter = inMinFilter;
+	samplerInfo.magFilter = inMagFilter;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.addressModeU = inSamplerAddressModeU;
+	samplerInfo.addressModeV = inSamplerAddressModeV;
+	samplerInfo.addressModeW = inSamplerAddressModeW;
+	samplerInfo.anisotropyEnable = false;
+	samplerInfo.maxAnisotropy = 0.0f;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.flags = VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT;
+	if (vkCreateSampler(s_globalConfig.logicalDevice, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create texture sampler!");
+		return nullptr;
+	}
+	return sampler;
+}
+
+void GenImageCube(Texture* texture, uint32_t w, uint32_t h, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount, int mipmapLevel)
+{
+	VkImageCreateInfo imageCreateInfo = {};
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.extent = { w,h,1 };
+	imageCreateInfo.mipLevels = mipmapLevel;
+	imageCreateInfo.arrayLayers = 6;
+	imageCreateInfo.format = texture->format;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageCreateInfo.usage = usage;
+	imageCreateInfo.samples = sampleCount;
+	imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+	if (vkCreateImage(s_globalConfig.logicalDevice, &imageCreateInfo, nullptr, &texture->image) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create image\n");
+	}
+	VkMemoryRequirements memoryRequirements;
+	vkGetImageMemoryRequirements(s_globalConfig.logicalDevice, texture->image, &memoryRequirements);
+	VkMemoryAllocateInfo memoryAllocateInfo = {};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	vkAllocateMemory(s_globalConfig.logicalDevice, &memoryAllocateInfo, nullptr, &texture->memory);
+	vkBindImageMemory(s_globalConfig.logicalDevice, texture->image, texture->memory, 0);
+}
+
+VkImageView GenImageViewCube(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int mipmapLevel)
+{
+	VkImageView imageView = nullptr;
+	VkImageViewCreateInfo imageViewCreateInfo = {};
+	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.image = inImage;
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	imageViewCreateInfo.format = inFormat;
+	imageViewCreateInfo.subresourceRange.aspectMask = inImageAspectFlags;
+	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	imageViewCreateInfo.subresourceRange.levelCount = mipmapLevel;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount = 6;
+	imageViewCreateInfo.components = { VK_COMPONENT_SWIZZLE_R,VK_COMPONENT_SWIZZLE_G,VK_COMPONENT_SWIZZLE_B,VK_COMPONENT_SWIZZLE_A };
+	vkCreateImageView(s_globalConfig.logicalDevice, &imageViewCreateInfo, nullptr, &imageView);
+	return imageView;
+}
+
 void TransferImageLayout(
 	VkCommandBuffer inCommandBuffer, VkImage inImage, VkImageSubresourceRange inSubresourceRange,
 	VkImageLayout inOldLayout, VkAccessFlags inOldAccessFlags, VkPipelineStageFlags inSrcStageMask,

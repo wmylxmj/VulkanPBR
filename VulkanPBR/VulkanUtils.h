@@ -149,6 +149,7 @@ VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize 
 BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkBufferUsageFlags, VkMemoryPropertyFlags inVkMemoryPropertyFlags);
 void BufferSubData(VkBuffer buffer, VkBufferUsageFlags usage, const  void* data, VkDeviceSize size);
 VkDescriptorPool InitDescriptorPool();
+VkDescriptorSet InitDescriptorSet(VkDescriptorPool inVkDescriptorPool);
 
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData);
 void UnmapMemory(VkDeviceMemory memory);

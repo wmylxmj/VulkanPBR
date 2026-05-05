@@ -417,18 +417,18 @@ void GenImageCube(Texture* texture, uint32_t w, uint32_t h, VkImageUsageFlags us
 VkImageView GenImageViewCube(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int mipmapLevel)
 {
 	VkImageView imageView = nullptr;
-	VkImageViewCreateInfo imageViewCreateInfo = {};
-	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	imageViewCreateInfo.image = inImage;
-	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-	imageViewCreateInfo.format = inFormat;
-	imageViewCreateInfo.subresourceRange.aspectMask = inImageAspectFlags;
-	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-	imageViewCreateInfo.subresourceRange.levelCount = mipmapLevel;
-	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-	imageViewCreateInfo.subresourceRange.layerCount = 6;
-	imageViewCreateInfo.components = { VK_COMPONENT_SWIZZLE_R,VK_COMPONENT_SWIZZLE_G,VK_COMPONENT_SWIZZLE_B,VK_COMPONENT_SWIZZLE_A };
-	vkCreateImageView(s_globalConfig.logicalDevice, &imageViewCreateInfo, nullptr, &imageView);
+	VkImageViewCreateInfo ivci = {};
+	ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	ivci.image = inImage;
+	ivci.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	ivci.format = inFormat;
+	ivci.subresourceRange.aspectMask = inImageAspectFlags;
+	ivci.subresourceRange.baseMipLevel = 0;
+	ivci.subresourceRange.levelCount = mipmapLevel;
+	ivci.subresourceRange.baseArrayLayer = 0;
+	ivci.subresourceRange.layerCount = 6;
+	ivci.components = { VK_COMPONENT_SWIZZLE_R,VK_COMPONENT_SWIZZLE_G,VK_COMPONENT_SWIZZLE_B,VK_COMPONENT_SWIZZLE_A };
+	vkCreateImageView(s_globalConfig.logicalDevice, &ivci, nullptr, &imageView);
 	return imageView;
 }
 
@@ -1169,9 +1169,23 @@ VkDescriptorPool InitDescriptorPool()
 	poolInfo.pPoolSizes = UniformInputsBindings::descriptorPoolSizes.data();
 	poolInfo.maxSets = 1;
 	if (vkCreateDescriptorPool(s_globalConfig.logicalDevice, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-		printf("Failed to create descriptor pool!\n");
+		OutputDebugStringA("Failed to create descriptor pool!\n");
 	}
 	return descriptorPool;
+}
+
+VkDescriptorSet InitDescriptorSet(VkDescriptorPool inVkDescriptorPool)
+{
+	VkDescriptorSet descriptorSet = nullptr;
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = inVkDescriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &UniformInputsBindings::descriptorSetLayout;
+	if (vkAllocateDescriptorSets(s_globalConfig.logicalDevice, &allocInfo, &descriptorSet) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to allocate descriptor sets!\n");
+	}
+	return descriptorSet;
 }
 
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData)

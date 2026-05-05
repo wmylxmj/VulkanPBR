@@ -25,6 +25,14 @@ struct FrameBuffer {
 	~FrameBuffer();
 };
 
+struct GPUProgram {
+	int shaderStageCount;
+	VkPipelineShaderStageCreateInfo shaderStage[2];
+	GPUProgram();
+	~GPUProgram();
+	void AttachShader(VkShaderStageFlagBits inVkShaderStageFlagBits, const char* inFilePath);
+};
+
 struct BufferObject {
 	VkBuffer buffer;
 	VkDeviceMemory memory;
@@ -145,14 +153,14 @@ VkResult BeginOneTimeCommandBuffer(VkCommandBuffer* commandBuffer);
 void WaitForCommmandFinish(VkCommandBuffer commandBuffer);
 VkResult EndOneTimeCommandBuffer(VkCommandBuffer commandBuffer);
 
+VkShaderModule InitShaderWithCode(unsigned char* inCode, int inCodeLenInBytes);
 VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkBufferUsageFlags, VkMemoryPropertyFlags inVkMemoryPropertyFlags);
 void BufferSubData(VkBuffer buffer, VkBufferUsageFlags usage, const  void* data, VkDeviceSize size);
 VkDescriptorPool InitDescriptorPool();
 VkDescriptorSet InitDescriptorSet(VkDescriptorPool inVkDescriptorPool);
 void SetColorAttachmentCount(PipelineStateObject* inPSO, int count);
-
+void CreateGraphicPipeline(PipelineStateObject* inPSO, int inVertexDataSize, GPUProgram* inGPUProgram, bool inEnableDepthTest = true, bool inEnableDepthWrite = true, VkFrontFace inVkFrontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE, VkPrimitiveTopology inVkPrimitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 void SetDynamicState(PipelineStateObject* inPipelineStateObject, VkCommandBuffer commandbuffer);
-
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData);
 void UnmapMemory(VkDeviceMemory memory);

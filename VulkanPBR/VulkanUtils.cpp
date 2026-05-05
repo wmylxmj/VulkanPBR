@@ -288,6 +288,82 @@ VkImageView GenImageView2D(VkImage inImage, VkFormat inFormat, VkImageAspectFlag
 	return imageView;
 }
 
+static void SubmitBufferToImage(VkBuffer buffer, Texture* texture, uint32_t width, uint32_t height) {
+	VkCommandBuffer commandBuffer;
+	BeginOneTimeCommandBuffer(&commandBuffer);
+	VkBufferImageCopy region = {};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+
+	region.imageSubresource.aspectMask = texture->imageAspectFlag;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+
+	region.imageOffset = { 0, 0, 0 };
+	region.imageExtent = { width,height,1 };
+	vkCmdCopyBufferToImage(commandBuffer, buffer, texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	EndOneTimeCommandBuffer(commandBuffer);
+}
+
+void SubmitImage2D(Texture* texture, int width, int height, const void* pixel)
+{
+	VkDeviceSize imageSize = width * height;
+	if (texture->format == VK_FORMAT_R8G8B8A8_UNORM) {
+		imageSize *= 4;
+	}
+	else if (texture->format == VK_FORMAT_R32G32B32A32_SFLOAT) {
+		imageSize *= 16;
+	}
+	VkBuffer tempbuffer;
+	VkDeviceMemory tempmemory;
+	GenBuffer(tempbuffer, tempmemory, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	void* data;
+	vkMapMemory(s_globalConfig.logicalDevice, tempmemory, 0, imageSize, 0, &data);
+	memcpy(data, pixel, static_cast<size_t>(imageSize));
+	vkUnmapMemory(s_globalConfig.logicalDevice, tempmemory);
+
+	VkCommandBuffer commandbuffer;
+	BeginOneTimeCommandBuffer(&commandbuffer);
+	VkImageSubresourceRange subresourceRange = { texture->imageAspectFlag ,0,1,0,1 };
+	TransferImageLayout(commandbuffer, texture->image, subresourceRange,
+		VK_IMAGE_LAYOUT_UNDEFINED, 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+	EndOneTimeCommandBuffer(commandbuffer);
+
+	SubmitBufferToImage(tempbuffer, texture, width, height);
+
+	BeginOneTimeCommandBuffer(&commandbuffer);
+	TransferImageLayout(commandbuffer, texture->image, subresourceRange,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+	EndOneTimeCommandBuffer(commandbuffer);
+
+	vkDestroyBuffer(s_globalConfig.logicalDevice, tempbuffer, nullptr);
+	vkFreeMemory(s_globalConfig.logicalDevice, tempmemory, nullptr);
+}
+
+VkSampler GenSampler(VkFilter inMinFilter, VkFilter inMagFilter, VkSamplerAddressMode inSamplerAddressModeU, VkSamplerAddressMode inSamplerAddressModeV, VkSamplerAddressMode inSamplerAddressModeW)
+{
+	VkSampler sampler = nullptr;
+	VkSamplerCreateInfo samplerInfo = {};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.minFilter = inMinFilter;
+	samplerInfo.magFilter = inMagFilter;
+	samplerInfo.addressModeU = inSamplerAddressModeU;
+	samplerInfo.addressModeV = inSamplerAddressModeV;
+	samplerInfo.addressModeW = inSamplerAddressModeW;
+	samplerInfo.anisotropyEnable = false;
+	samplerInfo.maxAnisotropy = 0.0f;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	if (vkCreateSampler(s_globalConfig.logicalDevice, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+		OutputDebugStringA("Failed to create texture sampler!");
+		return nullptr;
+	}
+	return sampler;
+}
+
 void TransferImageLayout(
 	VkCommandBuffer inCommandBuffer, VkImage inImage, VkImageSubresourceRange inSubresourceRange,
 	VkImageLayout inOldLayout, VkAccessFlags inOldAccessFlags, VkPipelineStageFlags inSrcStageMask,

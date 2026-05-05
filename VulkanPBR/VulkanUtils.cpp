@@ -939,6 +939,22 @@ bool InitVulkan(void* param, int width, int height)
 	return true;
 }
 
+void OnViewportChangedVulkan(int inWidth, int inHeight)
+{
+	if (s_globalConfig.viewportWidth != inWidth || s_globalConfig.viewportHeight != inHeight) {
+		s_globalConfig.viewportWidth = inWidth;
+		s_globalConfig.viewportHeight = inHeight;
+		vkDeviceWaitIdle(s_globalConfig.logicalDevice);
+		for (int i = 0; i < s_globalConfig.systemFrameBufferCount; ++i) {
+			vkDestroyImageView(s_globalConfig.logicalDevice, s_globalConfig.swapchainImageViews[i], nullptr);
+			vkDestroyFramebuffer(s_globalConfig.logicalDevice, s_globalConfig.systemFrameBuffers[i].frameBuffer, nullptr);
+		}
+		vkDestroySwapchainKHR(s_globalConfig.logicalDevice, s_globalConfig.swapchain, nullptr);
+		InitSwapchain();
+		InitSystemFrameBuffer();
+	}
+}
+
 VkResult GenCommandBuffer(VkCommandBuffer* commandBuffer, int count, VkCommandBufferLevel level)
 {
 	VkCommandBufferAllocateInfo allocInfo = {};

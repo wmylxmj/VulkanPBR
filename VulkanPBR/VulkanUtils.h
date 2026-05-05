@@ -130,13 +130,12 @@ VkSampler GenCubeMapSampler(VkFilter inMinFilter = VK_FILTER_LINEAR, VkFilter in
 	VkSamplerAddressMode inSamplerAddressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 void GenImageCube(Texture* texture, uint32_t w, uint32_t h, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount, int mipmapLevel = 1);
 VkImageView GenImageViewCube(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int mipmapLevel = 1);
-
 void TransferImageLayout(VkCommandBuffer inCommandBuffer, VkImage inImage, VkImageSubresourceRange inSubresourceRange,
 	VkImageLayout inOldLayout, VkAccessFlags inOldAccessFlags, VkPipelineStageFlags inSrcStageMask,
 	VkImageLayout inNewLayout, VkAccessFlags inNewAccessFlags, VkPipelineStageFlags inDstStageMask);
 GlobalConfig& GetGlobalConfig();
 bool InitVulkan(void* param, int width, int height);
-
+void OnViewportChangedVulkan(int inWidth, int inHeight);
 VkResult GenCommandBuffer(VkCommandBuffer* commandBuffer, int count, VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 void DeleteCommandBuffer(VkCommandBuffer* commandBuffer, int count);
 VkCommandBuffer BeginRendering(VkCommandBuffer inCommandBuffer);

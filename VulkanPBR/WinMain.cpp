@@ -8,6 +8,7 @@ LRESULT CALLBACK VulkanWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam
 	case WM_SIZE:
 		RECT rect;
 		GetClientRect(hWnd, &rect);
+		OnViewportChangedVulkan(rect.right - rect.left, rect.bottom - rect.top);
 		break;
 
 	case WM_CLOSE:

@@ -14,3 +14,4 @@ struct StaticMeshVertexDataEx :public StaticMeshVertexData {
 };
 
 unsigned char* LoadFileContent(const char* path, int& fileSize);
+unsigned char* LoadImageFromFile(const char* path, int& width, int& height, int& channel, int forceChannel);

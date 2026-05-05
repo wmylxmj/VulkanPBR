@@ -446,18 +446,18 @@ void GenImageCube(Texture* texture, uint32_t w, uint32_t h, VkImageUsageFlags us
 VkImageView GenImageViewCube(VkImage inImage, VkFormat inFormat, VkImageAspectFlags inImageAspectFlags, int mipmapLevel)
 {
 	VkImageView imageView = nullptr;
-	VkImageViewCreateInfo ivci = {};
-	ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	ivci.image = inImage;
-	ivci.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-	ivci.format = inFormat;
-	ivci.subresourceRange.aspectMask = inImageAspectFlags;
-	ivci.subresourceRange.baseMipLevel = 0;
-	ivci.subresourceRange.levelCount = mipmapLevel;
-	ivci.subresourceRange.baseArrayLayer = 0;
-	ivci.subresourceRange.layerCount = 6;
-	ivci.components = { VK_COMPONENT_SWIZZLE_R,VK_COMPONENT_SWIZZLE_G,VK_COMPONENT_SWIZZLE_B,VK_COMPONENT_SWIZZLE_A };
-	vkCreateImageView(s_globalConfig.logicalDevice, &ivci, nullptr, &imageView);
+	VkImageViewCreateInfo imageViewCreateInfo = {};
+	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.image = inImage;
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	imageViewCreateInfo.format = inFormat;
+	imageViewCreateInfo.subresourceRange.aspectMask = inImageAspectFlags;
+	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	imageViewCreateInfo.subresourceRange.levelCount = mipmapLevel;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount = 6;
+	imageViewCreateInfo.components = { VK_COMPONENT_SWIZZLE_R,VK_COMPONENT_SWIZZLE_G,VK_COMPONENT_SWIZZLE_B,VK_COMPONENT_SWIZZLE_A };
+	vkCreateImageView(s_globalConfig.logicalDevice, &imageViewCreateInfo, nullptr, &imageView);
 	return imageView;
 }
 

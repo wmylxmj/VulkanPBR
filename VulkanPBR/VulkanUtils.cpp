@@ -977,6 +977,29 @@ BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkB
 	return bufferObject;
 }
 
+static void CopyBuffer(VkBuffer src, VkBuffer dst, int size) {
+	VkCommandBuffer commandBuffer;
+	BeginOneTimeCommandBuffer(&commandBuffer);
+	VkBufferCopy copyRegion = {};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+	EndOneTimeCommandBuffer(commandBuffer);
+}
+
+void BufferSubData(VkBuffer buffer, VkBufferUsageFlags usage, const void* data, VkDeviceSize size)
+{
+	VkBuffer tempBuffer;
+	VkDeviceMemory tempBufferMemory;
+	GenBuffer(tempBuffer, tempBufferMemory, size, usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	void* dst;
+	vkMapMemory(s_globalConfig.logicalDevice, tempBufferMemory, 0, size, 0, &dst);
+	memcpy(dst, data, size_t(size));
+	vkUnmapMemory(s_globalConfig.logicalDevice, tempBufferMemory);
+	CopyBuffer(tempBuffer, buffer, size);
+	vkDestroyBuffer(s_globalConfig.logicalDevice, tempBuffer, nullptr);
+	vkFreeMemory(s_globalConfig.logicalDevice, tempBufferMemory, nullptr);
+}
+
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData)
 {
 	vkMapMemory(s_globalConfig.logicalDevice, memory, offset, size, flags, ppData);

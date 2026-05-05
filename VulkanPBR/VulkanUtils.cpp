@@ -1160,6 +1160,20 @@ void BufferSubData(VkBuffer buffer, VkBufferUsageFlags usage, const void* data, 
 	vkFreeMemory(s_globalConfig.logicalDevice, tempBufferMemory, nullptr);
 }
 
+VkDescriptorPool InitDescriptorPool()
+{
+	VkDescriptorPool descriptorPool = nullptr;
+	VkDescriptorPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = static_cast<uint32_t>(UniformInputsBindings::descriptorPoolSizes.size());
+	poolInfo.pPoolSizes = UniformInputsBindings::descriptorPoolSizes.data();
+	poolInfo.maxSets = 1;
+	if (vkCreateDescriptorPool(s_globalConfig.logicalDevice, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+		printf("Failed to create descriptor pool!\n");
+	}
+	return descriptorPool;
+}
+
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData)
 {
 	vkMapMemory(s_globalConfig.logicalDevice, memory, offset, size, flags, ppData);

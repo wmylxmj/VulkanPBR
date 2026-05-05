@@ -152,7 +152,7 @@ void SwapBuffers();
 VkResult BeginOneTimeCommandBuffer(VkCommandBuffer* commandBuffer);
 void WaitForCommmandFinish(VkCommandBuffer commandBuffer);
 VkResult EndOneTimeCommandBuffer(VkCommandBuffer commandBuffer);
-
+Texture* LoadTextureFromFile(const char* inFilePath);
 VkShaderModule InitShaderWithCode(unsigned char* inCode, int inCodeLenInBytes);
 VkResult GenBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 BufferObject* CreateBuffer(VkDeviceSize inVkDeviceSize, VkBufferUsageFlags inVkBufferUsageFlags, VkMemoryPropertyFlags inVkMemoryPropertyFlags);

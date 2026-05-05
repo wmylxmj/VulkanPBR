@@ -1131,6 +1131,18 @@ VkResult EndOneTimeCommandBuffer(VkCommandBuffer commandBuffer)
 	return VK_SUCCESS;
 }
 
+Texture* LoadTextureFromFile(const char* inFilePath)
+{
+	Texture* texture = new Texture(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+	int image_width, image_height, channel;
+	unsigned char* pixel = LoadImageFromFile(inFilePath, image_width, image_height, channel, 4);
+	GenImage(texture, image_width, image_height, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT);
+	SubmitImage2D(texture, image_width, image_height, pixel);
+	texture->imageView = GenImageView2D(texture->image, texture->format, texture->imageAspectFlag);
+	delete[] pixel;
+	return texture;
+}
+
 VkShaderModule InitShaderWithCode(unsigned char* inCode, int inCodeLenInBytes)
 {
 	VkShaderModule shader = nullptr;

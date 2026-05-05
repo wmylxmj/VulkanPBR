@@ -1203,6 +1203,13 @@ void SetColorAttachmentCount(PipelineStateObject* inPSO, int count)
 	}
 }
 
+void SetDynamicState(PipelineStateObject* inPipelineStateObject, VkCommandBuffer commandbuffer)
+{
+	vkCmdSetViewport(commandbuffer, 0, 1, &inPipelineStateObject->viewport);
+	vkCmdSetScissor(commandbuffer, 0, 1, &inPipelineStateObject->scissor);
+	vkCmdSetDepthBias(commandbuffer, inPipelineStateObject->depthConstantFactor, inPipelineStateObject->depthClamp, inPipelineStateObject->depthSlopeFactor);
+}
+
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData)
 {
 	vkMapMemory(s_globalConfig.logicalDevice, memory, offset, size, flags, ppData);

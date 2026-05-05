@@ -152,5 +152,7 @@ VkDescriptorPool InitDescriptorPool();
 VkDescriptorSet InitDescriptorSet(VkDescriptorPool inVkDescriptorPool);
 void SetColorAttachmentCount(PipelineStateObject* inPSO, int count);
 
+void SetDynamicState(PipelineStateObject* inPipelineStateObject, VkCommandBuffer commandbuffer);
+
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData);
 void UnmapMemory(VkDeviceMemory memory);

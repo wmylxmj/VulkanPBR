@@ -1188,6 +1188,21 @@ VkDescriptorSet InitDescriptorSet(VkDescriptorPool inVkDescriptorPool)
 	return descriptorSet;
 }
 
+void SetColorAttachmentCount(PipelineStateObject* inPSO, int count)
+{
+	inPSO->colorBlendAttachmentStates.resize(count);
+	for (int i = 0; i < count; i++) {
+		inPSO->colorBlendAttachmentStates[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		inPSO->colorBlendAttachmentStates[i].blendEnable = VK_FALSE;
+		inPSO->colorBlendAttachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		inPSO->colorBlendAttachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		inPSO->colorBlendAttachmentStates[i].colorBlendOp = VK_BLEND_OP_ADD;
+		inPSO->colorBlendAttachmentStates[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		inPSO->colorBlendAttachmentStates[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		inPSO->colorBlendAttachmentStates[i].alphaBlendOp = VK_BLEND_OP_ADD;
+	}
+}
+
 void MapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData)
 {
 	vkMapMemory(s_globalConfig.logicalDevice, memory, offset, size, flags, ppData);

@@ -135,6 +135,7 @@
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="FrameBuffer.cpp" />
+    <ClCompile Include="Material.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="VulkanUtils.cpp" />
     <ClCompile Include="WinMain.cpp" />
@@ -142,6 +143,7 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="FrameBuffer.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="VulkanUtils.h" />
   </ItemGroup>

@@ -13,5 +13,10 @@ struct StaticMeshVertexDataEx :public StaticMeshVertexData {
 	float tangent[4];
 };
 
+struct SubMesh {
+	unsigned int* indexes;
+	int indexCount;
+};
+
 unsigned char* LoadFileContent(const char* path, int& fileSize);
 unsigned char* LoadImageFromFile(const char* path, int& width, int& height, int& channel, int forceChannel);

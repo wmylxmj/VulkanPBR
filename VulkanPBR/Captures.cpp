@@ -1,5 +1,130 @@
 #include "Captures.h"
 
+#include "Camera.h"
+#include "Mesh.h"
+#include "FrameBuffer.h"
+#include "Node.h"
+
+#include "glm/ext.hpp"
+
+static bool s_matrixInited = false;
+static glm::mat4 s_captureProjectionMatrix;
+static Camera s_captureCameras[6];
+
+void CopyRTImageToCubeMap(VkCommandBuffer inCommandBuffer, VkImage inSrcImage, int inWidth, int inHeight, VkImage inDstCubeMap, int inFace, int inMipmapLevel) {
+	VkImageSubresourceRange subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT ,0,1,0,1 };
+	TransferImageLayout(inCommandBuffer, inSrcImage, subresourceRange,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+
+	VkImageCopy copyRegion = {};
+
+	copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copyRegion.srcSubresource.baseArrayLayer = 0;
+	copyRegion.srcSubresource.mipLevel = 0;
+	copyRegion.srcSubresource.layerCount = 1;
+	copyRegion.srcOffset = { 0, 0, 0 };
+
+	copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copyRegion.dstSubresource.baseArrayLayer = inFace;
+	copyRegion.dstSubresource.mipLevel = inMipmapLevel;
+	copyRegion.dstSubresource.layerCount = 1;
+	copyRegion.dstOffset = { 0, 0, 0 };
+
+	copyRegion.extent.width = static_cast<uint32_t>(inWidth);
+	copyRegion.extent.height = static_cast<uint32_t>(inHeight);
+	copyRegion.extent.depth = 1;
+
+	vkCmdCopyImage(
+		inCommandBuffer,
+		inSrcImage,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		inDstCubeMap,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&copyRegion);
+}
+
+Texture* CreateTextureFromFile(const char* path) {
+	int image_width, image_height, channel_count;
+	float* pixelData = stbi_loadf(path, &image_width, &image_height, &channel_count, 0);
+	float* pixel = new float[image_width * image_height * 4];
+	for (int i = 0; i < image_width * image_height; i++) {
+		pixel[i * 4] = pixelData[i * 3];
+		pixel[i * 4 + 1] = pixelData[i * 3 + 1];
+		pixel[i * 4 + 2] = pixelData[i * 3 + 2];
+		pixel[i * 4 + 3] = 1.0f;
+	}
+	Texture* texture = new Texture(VK_FORMAT_R32G32B32A32_SFLOAT);
+	texture->format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	GenImage(texture, image_width, image_height, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT);
+	SubmitImage2D(texture, image_width, image_height, pixel);
+	texture->imageView = GenImageView2D(texture->image, texture->format, texture->imageAspectFlag);
+	stbi_image_free(pixelData);
+	delete[]pixel;
+	return texture;
+}
+
+void InitMatrices() {
+	if (s_matrixInited) {
+		return;
+	}
+	s_matrixInited = true;
+	s_captureProjectionMatrix = glm::perspective((90.0f * 3.14f / 180.0f), 1.0f, 0.1f, 100.0f);
+	s_captureCameras[0].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+	s_captureCameras[1].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+	s_captureCameras[2].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+	s_captureCameras[3].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	s_captureCameras[4].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+	s_captureCameras[5].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+}
+
+void HDRI2CubeMap(const char* inFilePath, Texture* inoutCubeMap, int inCubeMapResolution, const char* inVSFilePath, const char* inFSFilePath) {
+	InitMatrices();
+	Texture* hdriTexture = CreateTextureFromFile(inFilePath);
+	StaticMeshComponent* skyboxMesh = new StaticMeshComponent;
+	skyboxMesh->LoadFromFile("Res/Model/skybox.staticmesh");
+
+	FrameBufferEx* HDRI2CubeMapFBO = new FrameBufferEx;
+	HDRI2CubeMapFBO->SetSize(inCubeMapResolution, inCubeMapResolution);
+	HDRI2CubeMapFBO->AttachColorBuffer(VK_FORMAT_R32G32B32A32_SFLOAT);
+	HDRI2CubeMapFBO->AttachDepthBuffer();
+	HDRI2CubeMapFBO->Finish(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	Node* HDRI2CubeMapNode = new Node;
+	HDRI2CubeMapNode->m_modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	HDRI2CubeMapNode->m_staticMeshComponent = skyboxMesh;
+	Material* material = new Material(inVSFilePath, inFSFilePath);
+	material->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
+	material->m_pipelineStateObject->viewport = {
+		0,float(inCubeMapResolution),
+		float(inCubeMapResolution),-float(inCubeMapResolution),
+		0.0f,1.0f
+	};
+	material->m_pipelineStateObject->scissor = {
+		{0,0},{uint32_t(inCubeMapResolution),uint32_t(inCubeMapResolution)}
+	};
+	material->SetTexture(4, hdriTexture->imageView);
+	SetColorAttachmentCount(material->m_pipelineStateObject, 1);
+	material->m_pipelineStateObject->renderPass = HDRI2CubeMapFBO->m_renderPass;
+	material->m_pipelineStateObject->sampleCount = VK_SAMPLE_COUNT_1_BIT;
+	HDRI2CubeMapNode->m_material = material;
+
+	for (int i = 0; i < 6; i++) {
+		VkCommandBuffer commandbuffer = HDRI2CubeMapFBO->BeginRendering();
+		HDRI2CubeMapNode->Draw(commandbuffer, s_captureProjectionMatrix, s_captureCameras[i]);
+		vkCmdEndRenderPass(commandbuffer);
+		VkImageSubresourceRange subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT ,0,1,i,1 };
+		TransferImageLayout(commandbuffer, inoutCubeMap->image, subresourceRange,
+			VK_IMAGE_LAYOUT_UNDEFINED, 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+		CopyRTImageToCubeMap(commandbuffer, HDRI2CubeMapFBO->m_attachments[0]->image, inCubeMapResolution, inCubeMapResolution, inoutCubeMap->image, i, 0);
+		TransferImageLayout(commandbuffer, inoutCubeMap->image, subresourceRange,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+		EndOneTimeCommandBuffer(commandbuffer);
+	}
+}
+
 Texture* LoadHDRICubeMapFromFile(const char* inFilePath, int inCubeMapResolution, const char* inVSFilePath, const char* inFSFilePath)
 {
 	return nullptr;

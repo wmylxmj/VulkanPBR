@@ -190,7 +190,60 @@ Texture* CaptureDiffuseIrradiance(Texture* inSrcCubeMap, int inCubeMapResolution
 
 Texture* CapturePrefilteredColor(Texture* inSrcCubeMap, int inCubeMapResolution, const char* inVSFilePath, const char* inFSFilePath)
 {
-	return nullptr;
+	Texture* texture = new Texture(VK_FORMAT_R32G32B32A32_SFLOAT);
+	texture->format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	GenImageCube(texture, inCubeMapResolution, inCubeMapResolution, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT, 5);
+	texture->imageView = GenImageViewCube(texture->image, texture->format, texture->imageAspectFlag, 5);
+	StaticMeshComponent* skyboxMesh = new StaticMeshComponent;
+	skyboxMesh->LoadFromFile("Res/Model/skybox.staticmesh");
+
+	FrameBufferEx* capturePrefilteredColorFBO = new FrameBufferEx;
+	capturePrefilteredColorFBO->SetSize(inCubeMapResolution, inCubeMapResolution);
+	capturePrefilteredColorFBO->AttachColorBuffer(VK_FORMAT_R32G32B32A32_SFLOAT);
+	capturePrefilteredColorFBO->AttachDepthBuffer();
+	capturePrefilteredColorFBO->Finish(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+	Node* capturePrefilteredColorNode = new Node;
+	capturePrefilteredColorNode->m_modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	capturePrefilteredColorNode->m_staticMeshComponent = skyboxMesh;
+	Material* material = new Material(inVSFilePath, inFSFilePath);
+	material->m_pipelineStateObject->viewport = {
+		0,0.0f,
+		float(inCubeMapResolution),float(inCubeMapResolution),
+		0.0f,1.0f
+	};
+	material->m_pipelineStateObject->scissor = {
+		{0,0},{uint32_t(inCubeMapResolution),uint32_t(inCubeMapResolution)}
+	};
+	material->SetTexture(4, inSrcCubeMap->imageView, GenCubeMapSampler());
+	SetColorAttachmentCount(material->m_pipelineStateObject, 1);
+	material->m_pipelineStateObject->renderPass = capturePrefilteredColorFBO->m_renderPass;
+	material->m_pipelineStateObject->sampleCount = VK_SAMPLE_COUNT_1_BIT;
+	capturePrefilteredColorNode->m_material = material;
+
+	for (int mipmapLevel = 0; mipmapLevel < 5; mipmapLevel++) {
+		float roughness = float(mipmapLevel) / float(4);
+		for (int i = 0; i < 6; ++i) {
+			float currentResolution = static_cast<float>(inCubeMapResolution * std::pow(0.5f, mipmapLevel));
+			material->m_pipelineStateObject->viewport.y = 0.0f;
+			material->m_pipelineStateObject->viewport.width = currentResolution;
+			material->m_pipelineStateObject->viewport.height = currentResolution;
+			VkCommandBuffer commandbuffer = capturePrefilteredColorFBO->BeginRendering();
+			capturePrefilteredColorNode->m_material->SetVec4(0, roughness, 0.0f, 0.0f, 0.0f);
+			capturePrefilteredColorNode->Draw(commandbuffer, s_captureProjectionMatrix, s_captureCameras[i]);
+			vkCmdEndRenderPass(commandbuffer);
+			VkImageSubresourceRange subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, mipmapLevel, 1, i, 1 };
+			TransferImageLayout(commandbuffer, texture->image, subresourceRange,
+				VK_IMAGE_LAYOUT_UNDEFINED, 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+			CopyRTImageToCubeMap(commandbuffer, capturePrefilteredColorFBO->m_attachments[0]->image, currentResolution, currentResolution, texture->image, i, mipmapLevel);
+			TransferImageLayout(commandbuffer, texture->image, subresourceRange,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+			EndOneTimeCommandBuffer(commandbuffer);
+		}
+	}
+	return texture;
 }
 
 Texture* GenerateBRDF(int inResolution, const char* inVSFilePath, const char* inFSFilePath)

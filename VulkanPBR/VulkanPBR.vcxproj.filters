@@ -39,6 +39,9 @@
     <ClCompile Include="Node.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Captures.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VulkanUtils.h">
@@ -60,6 +63,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Node.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Captures.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

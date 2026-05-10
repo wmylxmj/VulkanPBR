@@ -30,3 +30,8 @@ public:
 	virtual void Update(VkCommandBuffer inCommandBuffer);
 	virtual void Draw(VkCommandBuffer inCommandBuffer);
 };
+
+class FullScreenQuadMeshComponent : public StaticMeshComponent {
+public:
+	void Init();
+};

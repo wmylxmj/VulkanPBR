@@ -139,6 +139,7 @@
     <ClCompile Include="FrameBuffer.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Node.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="VulkanUtils.cpp" />
     <ClCompile Include="WinMain.cpp" />
@@ -148,6 +149,7 @@
     <ClInclude Include="FrameBuffer.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Node.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="VulkanUtils.h" />
   </ItemGroup>

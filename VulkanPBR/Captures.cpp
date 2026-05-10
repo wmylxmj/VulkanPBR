@@ -137,7 +137,55 @@ Texture* LoadHDRICubeMapFromFile(const char* inFilePath, int inCubeMapResolution
 
 Texture* CaptureDiffuseIrradiance(Texture* inSrcCubeMap, int inCubeMapResolution, const char* inVSFilePath, const char* inFSFilePath)
 {
-	return nullptr;
+	Texture* texture = new Texture(VK_FORMAT_R32G32B32A32_SFLOAT);
+	texture->format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	GenImageCube(texture, inCubeMapResolution, inCubeMapResolution, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT);
+	texture->imageView = GenImageViewCube(texture->image, texture->format, texture->imageAspectFlag);
+	StaticMeshComponent* skyboxMesh = new StaticMeshComponent;
+	skyboxMesh->LoadFromFile("Res/Model/skybox.staticmesh");
+
+	FrameBufferEx* captureDiffuseIrradianceFBO = new FrameBufferEx;
+	captureDiffuseIrradianceFBO->SetSize(inCubeMapResolution, inCubeMapResolution);
+	captureDiffuseIrradianceFBO->AttachColorBuffer(VK_FORMAT_R32G32B32A32_SFLOAT);
+	captureDiffuseIrradianceFBO->AttachDepthBuffer();
+	captureDiffuseIrradianceFBO->Finish(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+	s_captureCameras[2].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	s_captureCameras[3].m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+
+	Node* captureDiffuseIrradianceNode = new Node;
+	captureDiffuseIrradianceNode->m_modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	captureDiffuseIrradianceNode->m_staticMeshComponent = skyboxMesh;
+	Material* material = new Material(inVSFilePath, inFSFilePath);
+	material->m_pipelineStateObject->viewport = {
+		0,0.0f,
+		float(inCubeMapResolution),float(inCubeMapResolution),
+		0.0f,1.0f
+	};
+	material->m_pipelineStateObject->scissor = {
+		{0,0},{uint32_t(inCubeMapResolution),uint32_t(inCubeMapResolution)}
+	};
+	material->SetTexture(4, inSrcCubeMap->imageView, GenCubeMapSampler());
+	SetColorAttachmentCount(material->m_pipelineStateObject, 1);
+	material->m_pipelineStateObject->renderPass = captureDiffuseIrradianceFBO->m_renderPass;
+	material->m_pipelineStateObject->sampleCount = VK_SAMPLE_COUNT_1_BIT;
+	captureDiffuseIrradianceNode->m_material = material;
+
+	for (int i = 0; i < 6; i++) {
+		VkCommandBuffer commandbuffer = captureDiffuseIrradianceFBO->BeginRendering();
+		captureDiffuseIrradianceNode->Draw(commandbuffer, s_captureProjectionMatrix, s_captureCameras[i]);
+		vkCmdEndRenderPass(commandbuffer);
+		VkImageSubresourceRange subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT ,0,1,i,1 };
+		TransferImageLayout(commandbuffer, texture->image, subresourceRange,
+			VK_IMAGE_LAYOUT_UNDEFINED, 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+		CopyRTImageToCubeMap(commandbuffer, captureDiffuseIrradianceFBO->m_attachments[0]->image, inCubeMapResolution, inCubeMapResolution, texture->image, i, 0);
+		TransferImageLayout(commandbuffer, texture->image, subresourceRange,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+		EndOneTimeCommandBuffer(commandbuffer);
+	}
+	return texture;
 }
 
 Texture* CapturePrefilteredColor(Texture* inSrcCubeMap, int inCubeMapResolution, const char* inVSFilePath, const char* inFSFilePath)

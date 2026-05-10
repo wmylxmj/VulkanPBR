@@ -248,5 +248,37 @@ Texture* CapturePrefilteredColor(Texture* inSrcCubeMap, int inCubeMapResolution,
 
 Texture* GenerateBRDF(int inResolution, const char* inVSFilePath, const char* inFSFilePath)
 {
-	return nullptr;
+	FullScreenQuadMeshComponent* fsqMesh = new FullScreenQuadMeshComponent;
+	fsqMesh->Init();
+
+	FrameBufferEx* generateBRDFFBO = new FrameBufferEx;
+	generateBRDFFBO->SetSize(inResolution, inResolution);
+	generateBRDFFBO->AttachColorBuffer(VK_FORMAT_R32G32_SFLOAT);
+	generateBRDFFBO->AttachDepthBuffer();
+	generateBRDFFBO->Finish();
+
+	Node* generateBRDFNode = new Node;
+	generateBRDFNode->m_modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	generateBRDFNode->m_staticMeshComponent = fsqMesh;
+	Material* material = new Material(inVSFilePath, inFSFilePath);
+	material->m_primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+	material->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
+	material->m_pipelineStateObject->viewport = {
+		0,0,
+		(float)inResolution,(float)inResolution,
+		0.0f,1.0f
+	};
+	material->m_pipelineStateObject->scissor = {
+		{0,0},{(unsigned int)inResolution,(unsigned int)inResolution}
+	};
+	SetColorAttachmentCount(material->m_pipelineStateObject, 1);
+	material->m_pipelineStateObject->renderPass = generateBRDFFBO->m_renderPass;
+	material->m_pipelineStateObject->sampleCount = VK_SAMPLE_COUNT_1_BIT;
+	generateBRDFNode->m_material = material;
+
+	VkCommandBuffer commandbuffer = generateBRDFFBO->BeginRendering();
+	generateBRDFNode->Draw(commandbuffer, s_captureProjectionMatrix, s_captureCameras[0]);
+	vkCmdEndRenderPass(commandbuffer);
+	EndOneTimeCommandBuffer(commandbuffer);
+	return generateBRDFFBO->m_attachments[0];
 }

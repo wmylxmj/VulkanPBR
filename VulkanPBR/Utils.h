@@ -4,6 +4,9 @@ extern "C" {
 #include "stb_image.h"
 }
 
+#include <Windows.h>
+#pragma comment(lib,"winmm.lib")
+
 struct StaticMeshVertexData {
 	float position[4];
 	float texcoord[4];
@@ -18,5 +21,6 @@ struct SubMesh {
 	int indexCount;
 };
 
+float GetFrameTime();
 unsigned char* LoadFileContent(const char* path, int& fileSize);
 unsigned char* LoadImageFromFile(const char* path, int& width, int& height, int& channel, int forceChannel);

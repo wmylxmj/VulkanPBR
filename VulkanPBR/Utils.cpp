@@ -3,6 +3,15 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+float GetFrameTime()
+{
+	static unsigned long lastTime = 0, timeSinceComputerStart = 0;
+	timeSinceComputerStart = timeGetTime();
+	unsigned long frameTime = lastTime == 0 ? 0 : timeSinceComputerStart - lastTime;
+	lastTime = timeSinceComputerStart;
+	return float(frameTime) / 1000.0f;
+}
+
 unsigned char* LoadFileContent(const char* path, int& fileSize)
 {
 	FILE* pFile = nullptr;

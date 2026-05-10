@@ -127,7 +127,12 @@ void HDRI2CubeMap(const char* inFilePath, Texture* inoutCubeMap, int inCubeMapRe
 
 Texture* LoadHDRICubeMapFromFile(const char* inFilePath, int inCubeMapResolution, const char* inVSFilePath, const char* inFSFilePath)
 {
-	return nullptr;
+	Texture* texture = new Texture(VK_FORMAT_R32G32B32A32_SFLOAT);
+	texture->format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	GenImageCube(texture, inCubeMapResolution, inCubeMapResolution, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT);
+	texture->imageView = GenImageViewCube(texture->image, texture->format, texture->imageAspectFlag);
+	HDRI2CubeMap(inFilePath, texture, inCubeMapResolution, inVSFilePath, inFSFilePath);
+	return texture;
 }
 
 Texture* CaptureDiffuseIrradiance(Texture* inSrcCubeMap, int inCubeMapResolution, const char* inVSFilePath, const char* inFSFilePath)

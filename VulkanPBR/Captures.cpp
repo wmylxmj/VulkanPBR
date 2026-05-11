@@ -83,7 +83,7 @@ void HDRI2CubeMap(const char* inFilePath, Texture* inoutCubeMap, int inCubeMapRe
 	InitMatrices();
 	Texture* hdriTexture = CreateTextureFromFile(inFilePath);
 	StaticMeshComponent* skyboxMesh = new StaticMeshComponent;
-	skyboxMesh->LoadFromFile("Res/Model/skybox.staticmesh");
+	skyboxMesh->LoadFromFile("Resources/Model/skybox.staticmesh");
 
 	FrameBufferEx* HDRI2CubeMapFBO = new FrameBufferEx;
 	HDRI2CubeMapFBO->SetSize(inCubeMapResolution, inCubeMapResolution);
@@ -142,7 +142,7 @@ Texture* CaptureDiffuseIrradiance(Texture* inSrcCubeMap, int inCubeMapResolution
 	GenImageCube(texture, inCubeMapResolution, inCubeMapResolution, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT);
 	texture->imageView = GenImageViewCube(texture->image, texture->format, texture->imageAspectFlag);
 	StaticMeshComponent* skyboxMesh = new StaticMeshComponent;
-	skyboxMesh->LoadFromFile("Res/Model/skybox.staticmesh");
+	skyboxMesh->LoadFromFile("Resources/Model/skybox.staticmesh");
 
 	FrameBufferEx* captureDiffuseIrradianceFBO = new FrameBufferEx;
 	captureDiffuseIrradianceFBO->SetSize(inCubeMapResolution, inCubeMapResolution);
@@ -195,7 +195,7 @@ Texture* CapturePrefilteredColor(Texture* inSrcCubeMap, int inCubeMapResolution,
 	GenImageCube(texture, inCubeMapResolution, inCubeMapResolution, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_SAMPLE_COUNT_1_BIT, 5);
 	texture->imageView = GenImageViewCube(texture->image, texture->format, texture->imageAspectFlag, 5);
 	StaticMeshComponent* skyboxMesh = new StaticMeshComponent;
-	skyboxMesh->LoadFromFile("Res/Model/skybox.staticmesh");
+	skyboxMesh->LoadFromFile("Resources/Model/skybox.staticmesh");
 
 	FrameBufferEx* capturePrefilteredColorFBO = new FrameBufferEx;
 	capturePrefilteredColorFBO->SetSize(inCubeMapResolution, inCubeMapResolution);

@@ -1,6 +1,7 @@
 #include <Windows.h>
 
 #include "VulkanUtils.h"
+#include "Scene.h"
 
 LRESULT CALLBACK VulkanWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
@@ -8,7 +9,7 @@ LRESULT CALLBACK VulkanWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam
 	case WM_SIZE:
 		RECT rect;
 		GetClientRect(hWnd, &rect);
-		OnViewportChangedVulkan(rect.right - rect.left, rect.bottom - rect.top);
+		OnViewportChanged(rect.right - rect.left, rect.bottom - rect.top);
 		break;
 
 	case WM_CLOSE:
@@ -47,6 +48,7 @@ int WINAPI WinMain(
 	);
 	GetGlobalConfig().preferredSampleCount = VK_SAMPLE_COUNT_1_BIT;
 	InitVulkan(hwnd, 1280, 720);
+	InitScene();
 	ShowWindow(hwnd, SW_SHOW);
 	UpdateWindow(hwnd);
 	MSG msg;
@@ -58,6 +60,7 @@ int WINAPI WinMain(
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		RenderOneFrame();
 	}
 	return 0;
 }

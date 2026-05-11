@@ -14,19 +14,23 @@ float GetFrameTime()
 
 unsigned char* LoadFileContent(const char* path, int& fileSize)
 {
+	fileSize = 0;
+	unsigned char* fileContent = nullptr;
 	FILE* pFile = nullptr;
 	errno_t err = fopen_s(&pFile, path, "rb");
 	if (err == 0)
 	{
 		fseek(pFile, 0, SEEK_END);
-		long fileSize = ftell(pFile);
-		rewind(pFile);
-		unsigned char* fileContent = new unsigned char[fileSize];
-		fread(fileContent, 1, fileSize, pFile);
+		fileSize = ftell(pFile);
+		if (fileSize > 0) {
+			rewind(pFile);
+			fileContent = new unsigned char[fileSize + 1];
+			fread(fileContent, sizeof(unsigned char), fileSize, pFile);
+			fileContent[fileSize] = '\0';
+		}
 		fclose(pFile);
-		return fileContent;
 	}
-	return nullptr;
+	return fileContent;
 }
 
 unsigned char* LoadImageFromFile(const char* path, int& width, int& height, int& channel, int forceChannel)

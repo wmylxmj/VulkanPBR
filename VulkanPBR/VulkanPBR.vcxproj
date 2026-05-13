@@ -157,6 +157,10 @@
     <ClInclude Include="Utils.h" />
     <ClInclude Include="VulkanUtils.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\PBR.frag" />
+    <None Include="Resources\PBR.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -9,6 +9,8 @@
 #include "glm/glm.hpp"
 #include "glm/ext.hpp"
 
+#include <format>
+
 glm::mat4 g_projectionMatrix;
 Camera g_mainCamera;
 
@@ -44,6 +46,7 @@ void InitScene()
 	g_sphereNode->m_material = material;
 	StaticMeshComponent* sphereMesh = new StaticMeshComponent();
 	sphereMesh->LoadFromFile("Resources/Model/Sphere.staticmesh");
+	OutputDebugStringA(std::format("Vertex Count: {}\n", sphereMesh->m_vertexCount).c_str());
 	g_sphereNode->m_staticMeshComponent = sphereMesh;
 	material->m_pipelineStateObject->viewport = {
 		0.0f, (float)globalConfig.viewportHeight,

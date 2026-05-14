@@ -6,7 +6,7 @@ layout (location=2) in vec3 v_worldPosition;
 
 layout (location=0) out vec4 outColor0;
 
-layout(binding=0) uniform ub3 {
+layout(binding=3) uniform ub3 {
 	mat4 cameraWorldPosition;
     mat4 reserved[1023];
 };

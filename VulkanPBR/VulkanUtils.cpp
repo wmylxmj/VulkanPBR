@@ -730,6 +730,7 @@ void InitSwapchain() {
 			break;
 		}
 	}
+	OutputDebugStringA((std::string("Swapchain format: ") + std::to_string(surfaceFormat.format) + "\n").c_str());
 	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 	for (const auto& availablePresentMode : s_globalConfig.presentModes) {
 		if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR) {

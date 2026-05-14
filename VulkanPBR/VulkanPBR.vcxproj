@@ -158,8 +158,10 @@
     <ClInclude Include="VulkanUtils.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\FSQ.vert" />
     <None Include="Resources\PBR.frag" />
     <None Include="Resources\PBR.vert" />
+    <None Include="Resources\ToneMapping.frag" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

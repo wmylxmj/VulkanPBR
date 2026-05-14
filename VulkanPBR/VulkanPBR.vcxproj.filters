@@ -78,5 +78,7 @@
   <ItemGroup>
     <None Include="Resources\PBR.vert" />
     <None Include="Resources\PBR.frag" />
+    <None Include="Resources\FSQ.vert" />
+    <None Include="Resources\ToneMapping.frag" />
   </ItemGroup>
 </Project>

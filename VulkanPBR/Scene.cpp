@@ -4,6 +4,7 @@
 #include "FrameBuffer.h"
 #include "Camera.h"
 #include "Node.h"
+#include "Mesh.h"
 
 #include "glm/glm.hpp"
 #include "glm/ext.hpp"
@@ -14,6 +15,7 @@ Camera g_mainCamera;
 FrameBufferEx* g_HdrFrameBuffer = nullptr;
 
 Node* g_sphereNode = nullptr;
+Node* g_toneMappingNode = nullptr;
 
 void OnViewportChanged(int inWidth, int inHeight)
 {
@@ -54,6 +56,28 @@ void InitScene()
 	SetColorAttachmentCount(material->m_pipelineStateObject, 1);
 	material->m_pipelineStateObject->renderPass = g_HdrFrameBuffer->m_renderPass;
 	material->m_pipelineStateObject->sampleCount = VK_SAMPLE_COUNT_1_BIT;
+
+	g_toneMappingNode = new Node();
+	g_toneMappingNode->m_modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	material = new Material("Resources/FSQ.vsb", "Resources/ToneMapping.fsb");
+	g_toneMappingNode->m_material = material;
+	FullScreenQuadMeshComponent* fsqMesh = new FullScreenQuadMeshComponent();
+	fsqMesh->Init();
+	g_toneMappingNode->m_staticMeshComponent = fsqMesh;
+	material->m_primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+	material->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
+	material->m_pipelineStateObject->viewport = {
+		0.0f, 0.0f,
+		(float)globalConfig.viewportWidth, (float)globalConfig.viewportHeight,
+		0.0f, 1.0f
+	};
+	material->m_pipelineStateObject->scissor = {
+		{0, 0}, {globalConfig.viewportWidth, globalConfig.viewportHeight}
+	};
+	SetColorAttachmentCount(material->m_pipelineStateObject, 1);
+	material->m_pipelineStateObject->renderPass = globalConfig.systemRenderPass;
+	material->m_pipelineStateObject->sampleCount = VK_SAMPLE_COUNT_1_BIT;
+	material->SetTexture(4, g_HdrFrameBuffer->m_attachments[0]->imageView);
 }
 
 void RenderOneFrame()
@@ -65,6 +89,7 @@ void RenderOneFrame()
 	vkCmdEndRenderPass(commandBuffer);
 	// Render HDR to Swapchain Image
 	BeginRendering(commandBuffer); // Swapchain Render Pass
+	g_toneMappingNode->Draw(commandBuffer, g_projectionMatrix, g_mainCamera);
 	EndRendering();
 	SwapBuffers();
 }
